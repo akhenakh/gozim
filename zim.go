@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -130,19 +129,27 @@ func (z *ZimReader) readFileHeaders() error {
 	// Mime type list
 	z.f.Seek(int64(z.mimeListPos), 0)
 
+	return err
+}
+
+func (z *ZimReader) MimeTypes() []string {
+	var s []string
+	s = make([]string, 1, 1)
+
 	r := bufio.NewReader(z.f)
 	for {
 		line, err := r.ReadBytes('\x00')
 		if err != nil && err != io.EOF {
 			panic(err)
 		}
+		// a line of 1 is a line containing only \x00 and it's the marker for the
+		// end of mime types list
 		if len(line) == 1 {
 			break
 		}
-		fmt.Println(strings.TrimRight(string(line), "\x00"))
+		s = append(s, strings.TrimRight(string(line), "\x00"))
 	}
-
-	return err
+	return s
 }
 
 func readInt32(b []byte) (v uint32, err error) {
