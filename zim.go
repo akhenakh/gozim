@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 const (
@@ -135,12 +136,10 @@ func (z *ZimReader) readFileHeaders() error {
 		if err != nil && err != io.EOF {
 			panic(err)
 		}
-		if string(line) == "" {
+		if len(line) == 1 {
 			break
 		}
-		fmt.Println(string(line))
-		break
-
+		fmt.Println(strings.TrimRight(string(line), "\x00"))
 	}
 
 	return err
