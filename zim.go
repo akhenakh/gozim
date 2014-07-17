@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"io"
 	"os"
+	"unicode/utf8"
 )
 
 const (
@@ -42,7 +45,7 @@ func (z *ZimReader) readFileHeaders() error {
 		panic(err)
 	}
 
-	b := make([]byte, 80)
+	b := make([]byte, 1024)
 
 	_, err = z.f.Read(b)
 	if err != nil {
@@ -122,6 +125,30 @@ func (z *ZimReader) readFileHeaders() error {
 		panic(err)
 	}
 	z.layoutPage = v
+
+	// Mime type list
+	z.f.Seek(int64(z.mimeListPos), 0)
+
+	eos := make([]byte, 1)
+	utf8.EncodeRune(eos, '\x00')
+	for {
+		// read a chunk
+		n, err := z.f.Read(b)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+		if n == 0 {
+			break
+		}
+
+		a := bytes.Split(b, eos)
+		fmt.Println(len(a))
+		for m := range a {
+			fmt.Println(string(m))
+		}
+		break
+
+	}
 
 	return err
 }
