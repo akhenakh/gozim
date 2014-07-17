@@ -1,13 +1,13 @@
 package zim
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"unicode/utf8"
 )
 
 const (
@@ -129,23 +129,16 @@ func (z *ZimReader) readFileHeaders() error {
 	// Mime type list
 	z.f.Seek(int64(z.mimeListPos), 0)
 
-	eos := make([]byte, 1)
-	utf8.EncodeRune(eos, '\x00')
+	r := bufio.NewReader(z.f)
 	for {
-		// read a chunk
-		n, err := z.f.Read(b)
+		line, err := r.ReadBytes('\x00')
 		if err != nil && err != io.EOF {
 			panic(err)
 		}
-		if n == 0 {
+		if string(line) == "" {
 			break
 		}
-
-		a := bytes.Split(b, eos)
-		fmt.Println(len(a))
-		for m := range a {
-			fmt.Println(string(m))
-		}
+		fmt.Println(string(line))
 		break
 
 	}
