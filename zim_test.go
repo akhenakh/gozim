@@ -26,20 +26,29 @@ func TestMime(t *testing.T) {
 	if len(z.MimeTypes()) == 0 {
 		t.Errorf("No mime types found")
 	}
-	t.Log(z.MimeTypes())
 }
 
-func TestGetArticle(t *testing.T) {
+func TestDisplayInfost(t *testing.T) {
 	z, err := NewReader("test.zim")
 	defer z.Close()
 	if err != nil {
 		t.Errorf("Can't read %v", err)
 	}
 
-	z.getUrlAtIdx(0)
+	t.Log(z.String())
 }
 
-func ListUrls(t *testing.T) {
+func TestGetUrlAtIdx(t *testing.T) {
+	z, err := NewReader("test.zim")
+	defer z.Close()
+	if err != nil {
+		t.Errorf("Can't read %v", err)
+	}
+
+	z.GetUrlAtIdx(0)
+}
+
+func TestListUrls(t *testing.T) {
 	z, err := NewReader("test.zim")
 	defer z.Close()
 	if err != nil {
@@ -50,5 +59,9 @@ func ListUrls(t *testing.T) {
 
 	for _ = range z.ListUrls() {
 		i++
+	}
+
+	if i == 0 {
+		t.Errorf("Can't find any urls")
 	}
 }

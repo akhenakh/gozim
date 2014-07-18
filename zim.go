@@ -3,6 +3,7 @@ package zim
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -23,8 +24,8 @@ type Article struct {
 	Namespace byte
 	URL       string
 	Title     string
-	Blob      int32
-	Cluster   int32
+	Blob      uint32
+	Cluster   uint32
 }
 
 const (
@@ -187,27 +188,26 @@ func (z *ZimReader) ListUrls() <-chan string {
 	go func() {
 		var i uint64
 		for i = 0; i < uint64(z.ArticleCount); i++ {
-			ch <- z.getUrlAtIdx(i)
+			offset := z.GetUrlAtIdx(i)
+			art := z.getArticleAt(offset)
+			ch <- art.Title
 		}
 		close(ch) // Remember to close or the loop never ends!
 	}()
 	return ch
 }
 
-func (z *ZimReader) getUrlAtIdx(pos uint64) string {
-	offset := z.urlPtrPos + (pos-1)*8
-
-	v, err := readInt64(z.mmap[offset : offset+9])
+func (z *ZimReader) GetUrlAtIdx(pos uint64) uint64 {
+	offset := z.urlPtrPos + pos*8
+	v, err := readInt64(z.mmap[offset : offset+8])
 	if err != nil {
 		panic(err)
 	}
-
-	title, _, _, _ := z.getArticleAt(v)
-	return title
+	return v
 }
 
 // get the article (Directory) pointed by the offset found in URLpos or Titlepos
-func (z *ZimReader) getArticleAt(offset uint64) (title, url, mimeType string, data []byte) {
+func (z *ZimReader) getArticleAt(offset uint64) (art Article) {
 	a := Article{}
 	a.URLPtr = offset
 
@@ -228,7 +228,23 @@ func (z *ZimReader) getArticleAt(offset uint64) (title, url, mimeType string, da
 		return
 	}
 
-	mimeType = z.mimeTypeList[mimeIdx]
+	//mimeType := z.mimeTypeList[mimeIdx]
+	a.Namespace = z.mmap[offset+3]
+	a.Cluster, err = readInt32(z.mmap[offset+8 : offset+8+4])
+	if err != nil {
+		panic(err)
+	}
+
+	a.Blob, err = readInt32(z.mmap[offset+12 : offset+12+4])
+	if err != nil {
+		panic(err)
+	}
+
+	b := bytes.NewBuffer(z.mmap[offset+16:])
+	a.URL, err = b.ReadString('\x00')
+	if err != nil {
+		panic(err)
+	}
 
 	return
 }
@@ -252,4 +268,13 @@ func (z *ZimReader) getTitleAt(pos uint64) string {
 func (z *ZimReader) Close() {
 	syscall.Munmap(z.mmap)
 	z.f.Close()
+}
+
+func (z *ZimReader) String() string {
+	fi, err := z.f.Stat()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("Size: %d, ArticleCount: %d urlPtrPos: 0x%x mimeListPos: 0x%x\nMimeTypes: %v",
+		fi.Size(), z.ArticleCount, z.urlPtrPos, z.mimeListPos, z.MimeTypes())
 }
