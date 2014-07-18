@@ -1,14 +1,31 @@
 package zim
 
 import (
-	"bufio"
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"io"
 	"os"
 	"strings"
+	"syscall"
 )
+
+type DirType int8
+
+const (
+	ArticleType DirType = iota
+	RedirectType
+	LinktargetType
+)
+
+type Article struct {
+	URLPtr    uint64
+	Mimetype  uint16
+	Namespace byte
+	URL       string
+	Title     string
+	Blob      int32
+	Cluster   int32
+}
 
 const (
 	ZIM = 72173914
@@ -16,6 +33,7 @@ const (
 
 type ZimReader struct {
 	f             *os.File
+	mmap          []byte
 	ArticleCount  uint32
 	clusterCount  uint32
 	urlPtrPos     uint64
@@ -24,36 +42,33 @@ type ZimReader struct {
 	mimeListPos   uint64
 	mainPage      uint32
 	layoutPage    uint32
+	mimeTypeList  []string
 }
 
 func NewReader(path string) (*ZimReader, error) {
 	f, err := os.Open(path)
-	z := ZimReader{f: f, mainPage: 0xffffffff, layoutPage: 0xffffffff}
 	if err != nil {
-		return nil, err
+		panic(err)
+	}
+	z := ZimReader{f: f, mainPage: 0xffffffff, layoutPage: 0xffffffff}
+
+	fi, err := f.Stat()
+	if err != nil {
+		panic(err)
 	}
 
+	mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
+	if err != nil {
+		panic(err)
+	}
+	z.mmap = mmap
 	err = z.readFileHeaders()
 	return &z, err
 }
 
 func (z *ZimReader) readFileHeaders() error {
-	// get size
-	z.f.Stat()
-	_, err := z.f.Seek(0, 0)
-	if err != nil {
-		panic(err)
-	}
-
-	b := make([]byte, 1024)
-
-	_, err = z.f.Read(b)
-	if err != nil {
-		panic(err)
-	}
-
 	// checking for file type
-	v, err := readInt32(b[0:4])
+	v, err := readInt32(z.mmap[0:4])
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +77,7 @@ func (z *ZimReader) readFileHeaders() error {
 	}
 
 	// checking for version
-	v, err = readInt32(b[4:9])
+	v, err = readInt32(z.mmap[4:9])
 	if err != nil {
 		panic(err)
 	}
@@ -71,74 +86,77 @@ func (z *ZimReader) readFileHeaders() error {
 	}
 
 	// checking for articles count
-	v, err = readInt32(b[24:29])
+	v, err = readInt32(z.mmap[24:29])
 	if err != nil {
 		panic(err)
 	}
 	z.ArticleCount = v
 
 	// checking for cluster count
-	v, err = readInt32(b[28:33])
+	v, err = readInt32(z.mmap[28:33])
 	if err != nil {
 		panic(err)
 	}
 	z.clusterCount = v
 
 	// checking for urlPtrPos
-	vb, err := readInt64(b[32:41])
+	vb, err := readInt64(z.mmap[32:41])
 	if err != nil {
 		panic(err)
 	}
 	z.urlPtrPos = vb
 
 	// checking for titlePtrPos
-	vb, err = readInt64(b[40:49])
+	vb, err = readInt64(z.mmap[40:49])
 	if err != nil {
 		panic(err)
 	}
 	z.titlePtrPos = vb
 
 	// checking for clusterPtrPos
-	vb, err = readInt64(b[48:57])
+	vb, err = readInt64(z.mmap[48:57])
 	if err != nil {
 		panic(err)
 	}
 	z.clusterPtrPos = vb
 
 	// checking for mimeListPos
-	vb, err = readInt64(b[56:65])
+	vb, err = readInt64(z.mmap[56:65])
 	if err != nil {
 		panic(err)
 	}
 	z.mimeListPos = vb
 
 	// checking for mainPage
-	v, err = readInt32(b[64:69])
+	v, err = readInt32(z.mmap[64:69])
 	if err != nil {
 		panic(err)
 	}
 	z.mainPage = v
 
 	// checking for layoutPage
-	v, err = readInt32(b[68:73])
+	v, err = readInt32(z.mmap[68:73])
 	if err != nil {
 		panic(err)
 	}
 	z.layoutPage = v
 
-	// Mime type list
-	z.f.Seek(int64(z.mimeListPos), 0)
-
+	z.MimeTypes()
 	return err
 }
 
+// Return an ordered list of mime types present in the ZIM file
 func (z *ZimReader) MimeTypes() []string {
-	var s []string
-	s = make([]string, 1, 1)
+	if len(z.mimeTypeList) != 0 {
+		return z.mimeTypeList
+	}
 
-	r := bufio.NewReader(z.f)
+	s := make([]string, 1, 1)
+
+	b := bytes.NewBuffer(z.mmap[z.mimeListPos:])
+
 	for {
-		line, err := r.ReadBytes('\x00')
+		line, err := b.ReadBytes('\x00')
 		if err != nil && err != io.EOF {
 			panic(err)
 		}
@@ -149,27 +167,89 @@ func (z *ZimReader) MimeTypes() []string {
 		}
 		s = append(s, strings.TrimRight(string(line), "\x00"))
 	}
+	z.mimeTypeList = s
 	return s
 }
 
-func readInt32(b []byte) (v uint32, err error) {
-	buf := bytes.NewBuffer(b)
-	err = binary.Read(buf, binary.LittleEndian, &v)
-	if err != nil {
-		return v, err
-	}
-	return v, nil
+func (z *ZimReader) ListTitles() (func() (string, bool), bool) {
+	var idx uint64 = 0
+	return func() (string, bool) {
+		prev_idx := idx
+		idx++
+		return z.getTitleAt(prev_idx), (idx < uint64(z.ArticleCount))
+	}, (idx < uint64(z.ArticleCount))
 }
 
-func readInt64(b []byte) (v uint64, err error) {
-	buf := bytes.NewBuffer(b)
-	err = binary.Read(buf, binary.LittleEndian, &v)
-	if err != nil {
-		return v, err
-	}
-	return v, nil
+// note that this is a slow implementation a real iterator is faster
+// but you are not suppose to use this method on big zim files use indexes
+func (z *ZimReader) ListUrls() <-chan string {
+	ch := make(chan string, 10)
+	go func() {
+		var i uint64
+		for i = 0; i < uint64(z.ArticleCount); i++ {
+			ch <- z.getUrlAtIdx(i)
+		}
+		close(ch) // Remember to close or the loop never ends!
+	}()
+	return ch
 }
 
-func (z *ZimReader) FindByName(string) error {
-	return nil
+func (z *ZimReader) getUrlAtIdx(pos uint64) string {
+	offset := z.urlPtrPos + (pos-1)*8
+
+	v, err := readInt64(z.mmap[offset : offset+9])
+	if err != nil {
+		panic(err)
+	}
+
+	title, _, _, _ := z.getArticleAt(v)
+	return title
+}
+
+// get the article (Directory) pointed by the offset found in URLpos or Titlepos
+func (z *ZimReader) getArticleAt(offset uint64) (title, url, mimeType string, data []byte) {
+	a := Article{}
+	a.URLPtr = offset
+
+	mimeIdx, err := readInt16(z.mmap[offset : offset+2])
+	if err != nil {
+		panic(err)
+	}
+	a.Mimetype = mimeIdx
+
+	// Redirect
+	if mimeIdx == 0xffff {
+		//TODO
+		return
+	}
+	// Linktarget or Target Entry
+	if mimeIdx == 0xfffe || mimeIdx == 0xfffd {
+		//TODO
+		return
+	}
+
+	mimeType = z.mimeTypeList[mimeIdx]
+
+	return
+}
+
+func (z *ZimReader) getTitleAt(pos uint64) string {
+	offset := z.titlePtrPos + (pos-1)*4
+
+	v, err := readInt32(z.mmap[offset : offset+4])
+	if err != nil {
+		panic(err)
+	}
+
+	b := bytes.NewBuffer(z.mmap[v:])
+	title, err := b.ReadBytes('\x00')
+	if err != nil {
+		panic(err)
+	}
+	return string(title)
+}
+
+func (z *ZimReader) Close() {
+	syscall.Munmap(z.mmap)
+	z.f.Close()
 }
