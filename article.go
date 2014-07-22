@@ -3,11 +3,9 @@ package zim
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 
-	"code.google.com/p/lzma"
+	xz "github.com/remyoudompheng/go-liblzma"
 )
 
 const (
@@ -90,15 +88,13 @@ func (a *Article) Data(z *ZimReader) []byte {
 	// LZMA
 	if compression == 4 {
 		b := bytes.NewBuffer(z.mmap[start+1 : end+1])
-		r := lzma.NewReader(b)
-		io.Copy(os.Stdout, r)
-		r.Close()
-	}
-	//TODO: the returned blob is 2 bytes too early ..7zXZ
+		dec, err := xz.NewReader(b)
+		if err != nil {
+			panic(err)
+		}
 
-	//r := lzma.NewReader(b)
-	//io.Copy(os.Stdout, r)
-	//r.Close()
+		dec.Close()
+	}
 
 	return nil
 }
