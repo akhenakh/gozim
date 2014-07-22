@@ -1,13 +1,13 @@
 package zim
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
-	//"code.google.com/p/lzma"
+	"code.google.com/p/lzma"
 )
 
 const (
@@ -44,8 +44,8 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 		return nil
 	}
 
-	//mimeType := z.mimeTypeList[mimeIdx]
 	a.Namespace = z.mmap[offset+3]
+
 	a.Cluster, err = readInt32(z.mmap[offset+8 : offset+8+4])
 	if err != nil {
 		panic(err)
@@ -84,25 +84,21 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 // return the uncompressed data associated with this article
 func (a *Article) Data(z *ZimReader) []byte {
 	start, end := z.getClusterOffsetsAtIdx(a.Cluster)
-	fo, err := os.Create("output.lzma")
-	if err != nil {
-		panic(err)
+
+	compression := uint8(z.mmap[start])
+
+	// LZMA
+	if compression == 4 {
+		b := bytes.NewBuffer(z.mmap[start+1 : end+1])
+		r := lzma.NewReader(b)
+		io.Copy(os.Stdout, r)
+		r.Close()
 	}
-	defer fo.Close()
-	//b := bytes.NewBuffer(z.mmap[start:end])
-	w := bufio.NewWriter(fo)
-	if _, err := w.Write(z.mmap[start:end]); err != nil {
-		panic(err)
-	}
-	//TODO: the returned blob is 2 bytes to early ..7zXZ
+	//TODO: the returned blob is 2 bytes too early ..7zXZ
 
 	//r := lzma.NewReader(b)
 	//io.Copy(os.Stdout, r)
 	//r.Close()
-
-	if err = w.Flush(); err != nil {
-		panic(err)
-	}
 
 	return nil
 }

@@ -121,7 +121,7 @@ func (z *ZimReader) readFileHeaders() error {
 	z.mainPage = v
 
 	// checking for layoutPage
-	v, err = readInt32(z.mmap[68:73])
+	v, err = readInt32(z.mmap[68 : 68+4])
 	if err != nil {
 		panic(err)
 	}
@@ -204,6 +204,9 @@ func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 
 // return the article main page if it exists
 func (z *ZimReader) GetMainPage() *Article {
+	if z.mainPage == 0xffffffff {
+		return nil
+	}
 	return z.getArticleAt(z.GetUrlOffsetAtIdx(z.mainPage))
 }
 
