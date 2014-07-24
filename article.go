@@ -3,6 +3,7 @@ package zim
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"strings"
 
 	xz "github.com/remyoudompheng/go-liblzma"
@@ -82,9 +83,10 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 // return the uncompressed data associated with this article
 func (a *Article) Data(z *ZimReader) []byte {
 	start, end := z.getClusterOffsetsAtIdx(a.Cluster)
-
 	compression := uint8(z.mmap[start])
 
+	bs, _ := a.getBlobOffsetsAtIdx(z)
+	fmt.Println(bs)
 	// LZMA
 	if compression == 4 {
 		b := bytes.NewBuffer(z.mmap[start+1 : end+1])
@@ -93,13 +95,46 @@ func (a *Article) Data(z *ZimReader) []byte {
 			panic(err)
 		}
 
+		var bs, be uint64
+
+		//data := make([]byte, be-bs)
+		buf := make([]byte, 2048)
+
+		var pos uint64
+		for {
+			n, err := dec.Read(buf)
+			if err != nil && err != io.EOF {
+				panic(err)
+			}
+
+			if n == 0 {
+				break
+			}
+
+			// 1st we want to find our blob address
+			if bs == 0 {
+				if a.Blob*4+1 > pos+uint32(n) {
+					continue
+				} else {
+					bs = readInt64(b)
+				}
+			}
+
+			// our blob has started
+			if pos < bs && pos+uint64(n) >= bs {
+				fmt.Println("start here", buf)
+			}
+			pos += uint64(n)
+		}
+
 		dec.Close()
 	}
 
 	return nil
 }
 
-func (a *Article) getBlobOffsetsAtIdx(z *ZimReader, idx uint32) (start, end uint64) {
+func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
+	idx := a.Blob
 	offset := z.clusterPtrPos + uint64(idx)*8
 	start, err := readInt64(z.mmap[offset : offset+8])
 	if err != nil {
