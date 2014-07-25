@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"syscall"
 )
@@ -16,7 +17,7 @@ const (
 
 type ZimReader struct {
 	f             *os.File
-	mmap          []byte
+	mmap          [][]byte
 	ArticleCount  uint32
 	clusterCount  uint32
 	urlPtrPos     uint64
@@ -40,21 +41,53 @@ func NewReader(path string) (*ZimReader, error) {
 	if err != nil {
 		panic(err)
 	}
-	// TODO: on 32 bits system we need to map 2GB segments
-	mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
-	if err != nil {
-		panic(err)
+	z.mmap = make([][]byte, 1)
+
+	if int(fi.Size()) < 1<<31 || runtime.GOARCH == "amd64" {
+		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
+		if err != nil {
+			panic(err)
+		}
+		z.mmap[0] = mmap
+	} else {
+		// 32-bit architecture such as Intel's IA-32 can only directly address 4 GiB or smaller portions
+		// of files. An even smaller amount of addressible space is available to individual programs
+		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
+
 	}
-	z.mmap = mmap
+
 	err = z.readFileHeaders()
 	return &z, err
+}
+
+func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
+	if len(z.mmap) == 1 {
+		return z.mmap[0][start:end]
+	}
+	fns := start / 1 << 31
+	fne := end / 1 << 31
+	if fns == fne {
+		return z.mmap[fns][start%1<<31 : end%1<<31]
+	}
+
+	//TODO: end is on another segment
+	return nil
+}
+
+func (z *ZimReader) getByteAt(offset uint64) byte {
+	if len(z.mmap) == 1 {
+		return z.mmap[0][offset]
+	}
+
+	fn := offset / 1 << 31
+	return z.mmap[fn][offset%1<<31]
 }
 
 // populate the ZimReader structs with headers
 // It is decided to panic on corrupted zim file
 func (z *ZimReader) readFileHeaders() error {
 	// checking for file type
-	v, err := readInt32(z.mmap[0 : 0+4])
+	v, err := readInt32(z.getBytesRangeAt(0, 0+4))
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +96,7 @@ func (z *ZimReader) readFileHeaders() error {
 	}
 
 	// checking for version
-	v, err = readInt32(z.mmap[4 : 4+4])
+	v, err = readInt32(z.getBytesRangeAt(4, 4+4))
 	if err != nil {
 		panic(err)
 	}
@@ -72,56 +105,56 @@ func (z *ZimReader) readFileHeaders() error {
 	}
 
 	// checking for articles count
-	v, err = readInt32(z.mmap[24 : 24+4])
+	v, err = readInt32(z.getBytesRangeAt(24, 24+4))
 	if err != nil {
 		panic(err)
 	}
 	z.ArticleCount = v
 
 	// checking for cluster count
-	v, err = readInt32(z.mmap[28 : 28+4])
+	v, err = readInt32(z.getBytesRangeAt(28, 28+4))
 	if err != nil {
 		panic(err)
 	}
 	z.clusterCount = v
 
 	// checking for urlPtrPos
-	vb, err := readInt64(z.mmap[32 : 32+8])
+	vb, err := readInt64(z.getBytesRangeAt(32, 32+8))
 	if err != nil {
 		panic(err)
 	}
 	z.urlPtrPos = vb
 
 	// checking for titlePtrPos
-	vb, err = readInt64(z.mmap[40 : 40+8])
+	vb, err = readInt64(z.getBytesRangeAt(40, 40+8))
 	if err != nil {
 		panic(err)
 	}
 	z.titlePtrPos = vb
 
 	// checking for clusterPtrPos
-	vb, err = readInt64(z.mmap[48 : 48+8])
+	vb, err = readInt64(z.getBytesRangeAt(48, 48+8))
 	if err != nil {
 		panic(err)
 	}
 	z.clusterPtrPos = vb
 
 	// checking for mimeListPos
-	vb, err = readInt64(z.mmap[56 : 56+8])
+	vb, err = readInt64(z.getBytesRangeAt(56, 56+8))
 	if err != nil {
 		panic(err)
 	}
 	z.mimeListPos = vb
 
 	// checking for mainPage
-	v, err = readInt32(z.mmap[64 : 64+4])
+	v, err = readInt32(z.getBytesRangeAt(64, 64+4))
 	if err != nil {
 		panic(err)
 	}
 	z.mainPage = v
 
 	// checking for layoutPage
-	v, err = readInt32(z.mmap[68 : 68+4])
+	v, err = readInt32(z.getBytesRangeAt(68, 68+4))
 	if err != nil {
 		panic(err)
 	}
@@ -137,9 +170,9 @@ func (z *ZimReader) MimeTypes() []string {
 		return z.mimeTypeList
 	}
 
-	s := make([]string, 0)
-
-	b := bytes.NewBuffer(z.mmap[z.mimeListPos:])
+	var s []string
+	// assume mime list fit in 2k
+	b := bytes.NewBuffer(z.getBytesRangeAt(z.mimeListPos, z.mimeListPos+2048))
 
 	for {
 		line, err := b.ReadBytes('\x00')
@@ -184,7 +217,7 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 // get the offset in the zim pointing to URL at index pos
 func (z *ZimReader) GetUrlOffsetAtIdx(idx uint32) uint64 {
 	offset := z.urlPtrPos + uint64(idx)*8
-	v, err := readInt64(z.mmap[offset : offset+8])
+	v, err := readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
@@ -194,12 +227,13 @@ func (z *ZimReader) GetUrlOffsetAtIdx(idx uint32) uint64 {
 // return the start and end offsets for cluster idx
 func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	offset := z.clusterPtrPos + (uint64(idx) * 8)
-	start, err := readInt64(z.mmap[offset : offset+8])
+	start, err := readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(start)
 	offset = z.clusterPtrPos + (uint64(idx+1) * 8)
-	end, err = readInt64(z.mmap[offset : offset+8])
+	end, err = readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
@@ -233,7 +267,9 @@ func (z *ZimReader) GetMainPage() *Article {
 }
 
 func (z *ZimReader) Close() {
-	syscall.Munmap(z.mmap)
+	for _, m := range z.mmap {
+		syscall.Munmap(m)
+	}
 	z.f.Close()
 }
 

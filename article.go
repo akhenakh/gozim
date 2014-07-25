@@ -29,7 +29,7 @@ type Article struct {
 func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	a.URLPtr = offset
 
-	mimeIdx, err := readInt16(z.mmap[offset : offset+2])
+	mimeIdx, err := readInt16(z.getBytesRangeAt(offset, offset+2))
 	if err != nil {
 		panic(err)
 	}
@@ -41,14 +41,14 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 		return nil
 	}
 
-	a.Namespace = z.mmap[offset+3]
+	a.Namespace = z.getByteAt(offset + 3)
 
-	a.Cluster, err = readInt32(z.mmap[offset+8 : offset+8+4])
+	a.Cluster, err = readInt32(z.getBytesRangeAt(offset+8, offset+8+4))
 	if err != nil {
 		panic(err)
 	}
 
-	a.Blob, err = readInt32(z.mmap[offset+12 : offset+12+4])
+	a.Blob, err = readInt32(z.getBytesRangeAt(offset+12, offset+12+4))
 	if err != nil {
 		panic(err)
 	}
@@ -61,7 +61,8 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 			a.RedirectTo = z.getArticleAt(z.GetUrlOffsetAtIdx(a.Cluster))
 		}
 
-		b := bytes.NewBuffer(z.mmap[offset+12:])
+		// assume the url + title won't be longer than 2k
+		b := bytes.NewBuffer(z.getBytesRangeAt(offset+12, offset+12+2048))
 		a.URL, err = b.ReadString('\x00')
 		if err != nil {
 			panic(err)
@@ -77,7 +78,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 		return a
 	}
 
-	b := bytes.NewBuffer(z.mmap[offset+16:])
+	b := bytes.NewBuffer(z.getBytesRangeAt(offset+16, offset+16+2048))
 	a.URL, err = b.ReadString('\x00')
 	if err != nil {
 		panic(err)
@@ -103,11 +104,12 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 // return the uncompressed data associated with this article
 func (a *Article) Data(z *ZimReader) []byte {
 	start, end := z.getClusterOffsetsAtIdx(a.Cluster)
-	compression := uint8(z.mmap[start])
+	fmt.Println(start)
+	compression := uint8(z.getByteAt(start))
 
 	// LZMA
 	if compression == 4 {
-		b := bytes.NewBuffer(z.mmap[start+1 : end+1])
+		b := bytes.NewBuffer(z.getBytesRangeAt(start+1, end+1))
 		dec, err := xz.NewReader(b)
 		defer dec.Close()
 		if err != nil {
@@ -148,12 +150,12 @@ func (a *Article) FullURL() string {
 func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
 	idx := a.Blob
 	offset := z.clusterPtrPos + uint64(idx)*8
-	start, err := readInt64(z.mmap[offset : offset+8])
+	start, err := readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
 	offset = z.clusterPtrPos + uint64(idx+1)*8
-	end, err = readInt64(z.mmap[offset : offset+8])
+	end, err = readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}

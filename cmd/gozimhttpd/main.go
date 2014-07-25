@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"runtime"
 
 	"github.com/akhenakh/gozim"
 	"github.com/golang/groupcache/lru"
@@ -104,6 +105,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println(runtime.GOARCH)
 
 	// the need of a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
