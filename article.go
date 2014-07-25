@@ -85,8 +85,6 @@ func (a *Article) Data(z *ZimReader) []byte {
 	start, end := z.getClusterOffsetsAtIdx(a.Cluster)
 	compression := uint8(z.mmap[start])
 
-	bs, _ := a.getBlobOffsetsAtIdx(z)
-	fmt.Println(bs)
 	// LZMA
 	if compression == 4 {
 		b := bytes.NewBuffer(z.mmap[start+1 : end+1])
@@ -120,6 +118,16 @@ func (a *Article) Data(z *ZimReader) []byte {
 	}
 
 	return nil
+}
+
+// return the url prefixed by the namespace
+func (a *Article) FullURL() string {
+	nspace := string(a.Namespace)
+	if !strings.HasPrefix(a.URL, "/") {
+		nspace += "/"
+	}
+
+	return nspace + a.URL
 }
 
 func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {

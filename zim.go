@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 	"syscall"
 )
@@ -137,7 +138,7 @@ func (z *ZimReader) MimeTypes() []string {
 		return z.mimeTypeList
 	}
 
-	s := make([]string, 1, 1)
+	s := make([]string, 0)
 
 	b := bytes.NewBuffer(z.mmap[z.mimeListPos:])
 
@@ -164,7 +165,10 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 	ch := make(chan *Article, 10)
 	go func() {
 		var idx uint32
-		for idx = 0; idx < z.ArticleCount; idx++ {
+		// starting at 1 to avoid "con" entry
+		var start uint32 = 1
+
+		for idx = start; idx < z.ArticleCount; idx++ {
 			offset := z.GetUrlOffsetAtIdx(idx)
 			art := z.getArticleAt(offset)
 			if art == nil {
@@ -200,6 +204,20 @@ func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	}
 	end -= 1
 	return
+}
+
+// return the article at the exact url not using any index
+func (z *ZimReader) GetPageNoIndex(url string) *Article {
+	base := path.Base(url)
+	for a := range z.ListArticles() {
+		if a.Namespace != '-' && path.Base(a.URL) > base {
+			return nil
+		}
+		if a.FullURL() == url {
+			return a
+		}
+	}
+	return nil
 }
 
 // return the article main page if it exists

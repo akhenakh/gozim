@@ -44,7 +44,7 @@ func TestGetUrlAtIdx(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(22342)
+	p := Z.GetUrlOffsetAtIdx(4999)
 	if Z.getArticleAt(p) == nil {
 		t.Errorf("Can't find 1st url")
 	}
@@ -54,7 +54,7 @@ func TestDisplayArticle(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(22342)
+	p := Z.GetUrlOffsetAtIdx(4999)
 
 	var a *Article
 	if a = Z.getArticleAt(p); a == nil {
@@ -82,8 +82,8 @@ func TestListArticles(t *testing.T) {
 		t.Errorf("Can't find any urls")
 	}
 
-	if i != Z.ArticleCount {
-		t.Errorf("Can't find the exact ArticleCount urls")
+	if i != Z.ArticleCount-1 {
+		t.Errorf("Can't find the exact ArticleCount urls %d vs %d", i, Z.ArticleCount)
 	}
 }
 
@@ -102,7 +102,7 @@ func TestData(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(22342)
+	p := Z.GetUrlOffsetAtIdx(4999)
 	a := Z.getArticleAt(p)
 	t.Log(a.String())
 	t.Log(string(a.Data(Z)))
