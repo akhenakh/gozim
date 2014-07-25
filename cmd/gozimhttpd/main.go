@@ -35,11 +35,11 @@ func cacheLookup(url string) (*CachedResponse, bool) {
 	return nil, false
 }
 
-// dealing with
+// dealing with cached response, responding directly
 func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Request) {
 	if cr.ResponseType == RedirectResponse {
 		fmt.Printf("302 from %s to %s\n", r.URL.Path, string(cr.Data))
-		http.Redirect(w, r, string(cr.Data), http.StatusFound)
+		http.Redirect(w, r, "/"+string(cr.Data), http.StatusFound)
 	} else if cr.ResponseType == NoResponse {
 		fmt.Printf("404 %s\n", r.URL.Path)
 		http.NotFound(w, r)
