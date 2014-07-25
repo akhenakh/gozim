@@ -16,3 +16,4 @@ TODO
 32 bits support for zim > 2GB  
 Agressive cache reponse into browser  
 Use a Pool to list  
+Measure iterator callback vs 

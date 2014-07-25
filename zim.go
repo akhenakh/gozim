@@ -162,6 +162,7 @@ func (z *ZimReader) MimeTypes() []string {
 // but you are not suppose to use this method on big zim files, use indexes
 func (z *ZimReader) ListArticles() <-chan *Article {
 	ch := make(chan *Article, 10)
+
 	go func() {
 		var idx uint32
 		// starting at 1 to avoid "con" entry
@@ -207,9 +208,16 @@ func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 
 // return the article at the exact url not using any index this is really slow on big ZIM
 func (z *ZimReader) GetPageNoIndex(url string) *Article {
-	for a := range z.ListArticles() {
-		if a.FullURL() == url {
-			return a
+	var idx uint32
+	// starting at 1 to avoid "con" entry
+	var start uint32 = 1
+
+	art := new(Article)
+	for idx = start; idx < z.ArticleCount; idx++ {
+		offset := z.GetUrlOffsetAtIdx(idx)
+		art = z.FillArticleAt(art, offset)
+		if art.FullURL() == url {
+			return art
 		}
 	}
 	return nil
