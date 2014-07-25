@@ -102,6 +102,10 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 
 // return the uncompressed data associated with this article
 func (a *Article) Data(z *ZimReader) []byte {
+	// ensure we have data to read
+	if a.Mimetype == RedirectEntry || a.Mimetype == LinkTargetEntry || a.Mimetype == DeletedEntry {
+		return nil
+	}
 	start, end := z.getClusterOffsetsAtIdx(a.Cluster)
 	compression := uint8(z.mmap[start])
 
