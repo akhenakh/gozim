@@ -2,6 +2,7 @@ package zim
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -95,37 +96,40 @@ func (a *Article) Data(z *ZimReader) []byte {
 			panic(err)
 		}
 
-		var bs, be uint64
+		// blob starts at offset, blob ends at offset
+		var bs, be uint32
 
-		//data := make([]byte, be-bs)
-		buf := make([]byte, 2048)
-
-		var pos uint64
+		// find the blob position
+		bpos := make([]byte, 4)
+		var bcount uint32
 		for {
-			n, err := dec.Read(buf)
-			if err != nil && err != io.EOF {
-				panic(err)
+			n, err := dec.Read(bpos)
+			if n != 4 || err != nil && err != io.EOF {
+				panic(errors.New("Can't read enough data to find blob start"))
 			}
-
-			if n == 0 {
-				break
-			}
-
-			// 1st we want to find our blob address
-			if bs == 0 {
-				if a.Blob*4+1 > pos+uint32(n) {
-					continue
-				} else {
-					bs = readInt64(b)
+			if bcount == a.Blob {
+				bs, err = readInt32(bpos)
+				if err != nil {
+					panic(err)
 				}
 			}
-
-			// our blob has started
-			if pos < bs && pos+uint64(n) >= bs {
-				fmt.Println("start here", buf)
+			if bcount == a.Blob+1 {
+				be, err = readInt32(bpos)
+				if err != nil {
+					panic(err)
+				}
+				break
 			}
-			pos += uint64(n)
+			bcount++
 		}
+
+		// bs nor be can't start at 0 cause the blobs indexes offsets are at 0
+		if bs == 0 || be == 0 {
+			panic(errors.New("Can't find blob start"))
+		}
+
+		data := make([]byte, be-bs)
+		fmt.Println("allocated %d", cap(data))
 
 		dec.Close()
 	}
