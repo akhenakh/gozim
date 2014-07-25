@@ -41,18 +41,30 @@ func NewReader(path string) (*ZimReader, error) {
 	if err != nil {
 		panic(err)
 	}
-	z.mmap = make([][]byte, 1)
 
 	if int(fi.Size()) < 1<<31 || runtime.GOARCH == "amd64" {
+		fmt.Println("Using 64 bits addressing")
+
 		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
 		if err != nil {
 			panic(err)
 		}
+		z.mmap = make([][]byte, 1)
 		z.mmap[0] = mmap
 	} else {
 		// 32-bit architecture such as Intel's IA-32 can only directly address 4 GiB or smaller portions
 		// of files. An even smaller amount of addressible space is available to individual programs
 		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
+		fmt.Println("Using 32 bits addressing")
+
+		splits := int(fi.Size() / (1 << 31))
+		for i := 0; i <= splits; i++ {
+			mmap, err := syscall.Mmap(int(f.Fd()), 0*1<<31, 1<<31, syscall.PROT_READ, syscall.MAP_SHARED)
+			if err != nil {
+				panic(err)
+			}
+			z.mmap = append(z.mmap, mmap)
+		}
 
 	}
 
@@ -64,13 +76,15 @@ func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 	if len(z.mmap) == 1 {
 		return z.mmap[0][start:end]
 	}
-	fns := start / 1 << 31
-	fne := end / 1 << 31
+	fns := start / (1 << 31)
+	fne := end / (1 << 31)
 	if fns == fne {
-		return z.mmap[fns][start%1<<31 : end%1<<31]
+		return z.mmap[fns][start%(1<<31) : end%(1<<31)]
+	} else {
+		//TODO: end is on another segment
+		fmt.Println("read end on over file not implemented yet")
 	}
 
-	//TODO: end is on another segment
 	return nil
 }
 
@@ -79,7 +93,7 @@ func (z *ZimReader) getByteAt(offset uint64) byte {
 		return z.mmap[0][offset]
 	}
 
-	fn := offset / 1 << 31
+	fn := offset / (1 << 31)
 	return z.mmap[fn][offset%1<<31]
 }
 
@@ -231,7 +245,6 @@ func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(start)
 	offset = z.clusterPtrPos + (uint64(idx+1) * 8)
 	end, err = readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {

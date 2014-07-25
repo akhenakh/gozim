@@ -102,8 +102,14 @@ func TestData(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(4999)
+	p := Z.GetUrlOffsetAtIdx(2000)
 	a := Z.getArticleAt(p)
+	data := string(a.Data(Z))
+	if a.Mimetype != RedirectEntry {
+		if len(data) == 0 {
+			t.Error("can't read data")
+		}
+	}
 	t.Log(a.String())
-	t.Log(string(a.Data(Z)))
+	t.Log(data)
 }
