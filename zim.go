@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"strings"
 	"syscall"
 )
@@ -206,13 +205,9 @@ func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	return
 }
 
-// return the article at the exact url not using any index
+// return the article at the exact url not using any index this is really slow on big ZIM
 func (z *ZimReader) GetPageNoIndex(url string) *Article {
-	base := path.Base(url)
 	for a := range z.ListArticles() {
-		if a.Namespace != '-' && path.Base(a.URL) > base {
-			return nil
-		}
 		if a.FullURL() == url {
 			return a
 		}
