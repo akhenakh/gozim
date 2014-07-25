@@ -19,18 +19,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if a == nil {
-		fmt.Printf("404 %s\n", a.FullURL())
-
+		fmt.Printf("404 %s\n", r.URL.Path)
 		http.NotFound(w, r)
 		return
 	}
 
 	if a.Mimetype == zim.RedirectEntry {
-		fmt.Printf("302 %s to %s\n", r.URL.Path, a.RedirectTo.URL)
-		http.Redirect(w, r, a.RedirectTo.URL, http.StatusFound)
+		fmt.Printf("302 from %s to %s\n", r.URL.Path, a.RedirectTo.FullURL())
+		http.Redirect(w, r, a.RedirectTo.FullURL(), http.StatusFound)
 		return
 	}
-	fmt.Printf("200 %s\n", a.FullURL())
+
+	fmt.Printf("200 %s\n", r.URL.Path)
 	w.Header().Set("Content-Type", Z.MimeTypes()[a.Mimetype])
 	w.Write(a.Data(Z))
 }
