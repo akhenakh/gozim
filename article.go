@@ -123,13 +123,30 @@ func (a *Article) Data(z *ZimReader) []byte {
 			bcount++
 		}
 
-		// bs nor be can't start at 0 cause the blobs indexes offsets are at 0
+		// bs nor be can't start at 0 cause the blobs indexes offsets start at 0
 		if bs == 0 || be == 0 {
 			panic(errors.New("Can't find blob start"))
 		}
 
+		// we have read (a.Blob + 1) * 4 + 1
+		pos := (a.Blob+1)*4 + 1
+		fmt.Println(pos)
+
 		data := make([]byte, be-bs)
 		fmt.Println("allocated %d", cap(data))
+
+		rb := make([]byte, 2048)
+
+		for {
+			n, err := dec.Read(rb)
+			if err != nil {
+				panic(err)
+			}
+			if n == 0 {
+				break
+			}
+
+		}
 
 		dec.Close()
 	}
