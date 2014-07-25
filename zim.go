@@ -191,6 +191,7 @@ func (z *ZimReader) GetUrlOffsetAtIdx(idx uint32) uint64 {
 	return v
 }
 
+// return the start and end offsets for cluster idx
 func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	offset := z.clusterPtrPos + (uint64(idx) * 8)
 	start, err := readInt64(z.mmap[offset : offset+8])

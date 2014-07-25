@@ -27,34 +27,45 @@ var (
 	Cache *lru.Cache
 )
 
+func cacheLookup(url string) (*CachedResponse, bool) {
+	if v, ok := Cache.Get(url); ok {
+		c := v.(CachedResponse)
+		return &c, ok
+	}
+	return nil, false
+}
+
+// dealing with
+func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Request) {
+	if cr.ResponseType == RedirectResponse {
+		fmt.Printf("302 from %s to %s\n", r.URL.Path, string(cr.Data))
+		http.Redirect(w, r, string(cr.Data), http.StatusFound)
+	} else if cr.ResponseType == NoResponse {
+		fmt.Printf("404 %s\n", r.URL.Path)
+		http.NotFound(w, r)
+	} else if cr.ResponseType == DataResponse {
+		fmt.Printf("200 %s\n", r.URL.Path)
+		w.Header().Set("Content-Type", cr.MimeType)
+		w.Write(cr.Data)
+	}
+}
+
+// the handler receiving http request
 func handler(w http.ResponseWriter, r *http.Request) {
 
-cache:
-	if v, ok := Cache.Get(r.URL.Path[1:]); ok {
-		c := v.(CachedResponse)
-		if c.ResponseType == RedirectResponse {
-			fmt.Printf("302 from %s to %s\n", r.URL.Path, string(c.Data))
-			http.Redirect(w, r, string(c.Data), http.StatusFound)
-			return
-		} else if c.ResponseType == NoResponse {
-			fmt.Printf("404 %s\n", r.URL.Path)
-			http.NotFound(w, r)
-			return
-		} else if c.ResponseType == DataResponse {
-			fmt.Printf("200 %s\n", r.URL.Path)
-			w.Header().Set("Content-Type", c.MimeType)
-			w.Write(c.Data)
-			return
-		}
+	url := r.URL.Path[1:]
+
+	if cr, iscached := cacheLookup(url); iscached {
+		handleCachedResponse(cr, w, r)
 		return
 
 	} else {
 		var a *zim.Article
 
-		if r.URL.Path[1:] == "index.html" {
+		if url == "index.html" {
 			a = Z.GetMainPage()
 		} else {
-			a = Z.GetPageNoIndex(r.URL.Path[1:])
+			a = Z.GetPageNoIndex(url)
 		}
 
 		if a == nil {
@@ -71,7 +82,10 @@ cache:
 			})
 		}
 
-		goto cache
+		// look again in the cache for the same entry
+		if cr, iscached := cacheLookup(url); iscached {
+			handleCachedResponse(cr, w, r)
+		}
 	}
 }
 
