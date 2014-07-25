@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"flag"
 	"fmt"
 	"net/http"
 
@@ -23,6 +25,7 @@ type CachedResponse struct {
 }
 
 var (
+	path  = flag.String("path", "", "path for the zim file")
 	Z     *zim.ZimReader
 	Cache *lru.Cache
 )
@@ -90,8 +93,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	flag.Parse()
+	if *path == "" {
+		panic(errors.New("Provide a zim file path"))
+
+	}
 	http.HandleFunc("/", handler)
-	z, err := zim.NewReader("test.zim")
+	z, err := zim.NewReader(*path)
 	Z = z
 	if err != nil {
 		panic(err)
