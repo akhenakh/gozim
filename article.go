@@ -26,9 +26,7 @@ type Article struct {
 	RedirectTo *Article
 }
 
-// get the article (Directory) pointed by the offset found in URLpos or Titlepos
-func (z *ZimReader) getArticleAt(offset uint64) *Article {
-	a := new(Article)
+func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	a.URLPtr = offset
 
 	mimeIdx, err := readInt16(z.mmap[offset : offset+2])
@@ -62,6 +60,21 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 			// redirect ptr share the same memory offset than Cluster number
 			a.RedirectTo = z.getArticleAt(z.GetUrlOffsetAtIdx(a.Cluster))
 		}
+
+		b := bytes.NewBuffer(z.mmap[offset+12:])
+		a.URL, err = b.ReadString('\x00')
+		if err != nil {
+			panic(err)
+		}
+		a.URL = strings.TrimRight(string(a.URL), "\x00")
+
+		a.Title, err = b.ReadString('\x00')
+		if err != nil {
+			panic(err)
+		}
+		a.Title = strings.TrimRight(string(a.Title), "\x00")
+
+		return a
 	}
 
 	b := bytes.NewBuffer(z.mmap[offset+16:])
@@ -77,6 +90,13 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 	}
 	a.Title = strings.TrimRight(string(a.Title), "\x00")
 
+	return a
+}
+
+// get the article (Directory) pointed by the offset found in URLpos or Titlepos
+func (z *ZimReader) getArticleAt(offset uint64) *Article {
+	a := new(Article)
+	z.FillArticleAt(a, offset)
 	return a
 }
 
@@ -122,12 +142,7 @@ func (a *Article) Data(z *ZimReader) []byte {
 
 // return the url prefixed by the namespace
 func (a *Article) FullURL() string {
-	nspace := string(a.Namespace)
-	if !strings.HasPrefix(a.URL, "/") {
-		nspace += "/"
-	}
-
-	return nspace + a.URL
+	return string(a.Namespace) + "/" + a.URL
 }
 
 func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
