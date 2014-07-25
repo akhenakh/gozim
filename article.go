@@ -2,9 +2,8 @@ package zim
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"strings"
 
 	xz "github.com/remyoudompheng/go-liblzma"
@@ -92,6 +91,14 @@ func (a *Article) Data(z *ZimReader) []byte {
 	if compression == 4 {
 		b := bytes.NewBuffer(z.mmap[start+1 : end+1])
 		dec, err := xz.NewReader(b)
+		defer dec.Close()
+		if err != nil {
+			panic(err)
+		}
+
+		// the decoded chunk are around 1MB
+		// TODO: on smaller devices need to read stream rather than ReadAll
+		blob, err := ioutil.ReadAll(dec)
 		if err != nil {
 			panic(err)
 		}
@@ -99,56 +106,17 @@ func (a *Article) Data(z *ZimReader) []byte {
 		// blob starts at offset, blob ends at offset
 		var bs, be uint32
 
-		// find the blob position
-		bpos := make([]byte, 4)
-		var bcount uint32
-		for {
-			n, err := dec.Read(bpos)
-			if n != 4 || err != nil && err != io.EOF {
-				panic(errors.New("Can't read enough data to find blob start"))
-			}
-			if bcount == a.Blob {
-				bs, err = readInt32(bpos)
-				if err != nil {
-					panic(err)
-				}
-			}
-			if bcount == a.Blob+1 {
-				be, err = readInt32(bpos)
-				if err != nil {
-					panic(err)
-				}
-				break
-			}
-			bcount++
+		bs, err = readInt32(blob[a.Blob*4 : a.Blob*4+4])
+		if err != nil {
+			panic(err)
 		}
 
-		// bs nor be can't start at 0 cause the blobs indexes offsets start at 0
-		if bs == 0 || be == 0 {
-			panic(errors.New("Can't find blob start"))
+		be, err = readInt32(blob[a.Blob*4+4 : a.Blob*4+4+4])
+		if err != nil {
+			panic(err)
 		}
 
-		// we have read (a.Blob + 1) * 4 + 1
-		pos := (a.Blob+1)*4 + 1
-		fmt.Println(pos)
-
-		data := make([]byte, be-bs)
-		fmt.Println("allocated %d", cap(data))
-
-		rb := make([]byte, 2048)
-
-		for {
-			n, err := dec.Read(rb)
-			if err != nil {
-				panic(err)
-			}
-			if n == 0 {
-				break
-			}
-
-		}
-
-		dec.Close()
+		return blob[bs:be]
 	}
 
 	return nil

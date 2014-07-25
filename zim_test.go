@@ -105,5 +105,5 @@ func TestData(t *testing.T) {
 	p := Z.GetUrlOffsetAtIdx(22342)
 	a := Z.getArticleAt(p)
 	t.Log(a.String())
-	a.Data(Z)
+	t.Log(string(a.Data(Z)))
 }
