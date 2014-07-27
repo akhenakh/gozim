@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"runtime"
 
 	"github.com/akhenakh/gozim"
 	"github.com/golang/groupcache/lru"
@@ -74,15 +73,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		if a == nil {
 			Cache.Add(r.URL.Path[1:], CachedResponse{ResponseType: NoResponse})
-		} else if a.Mimetype == zim.RedirectEntry {
+		} else if a.EntryType == zim.RedirectEntry {
 			Cache.Add(r.URL.Path[1:], CachedResponse{
 				ResponseType: RedirectResponse,
 				Data:         []byte(a.RedirectTo.FullURL())})
 		} else {
 			Cache.Add(r.URL.Path[1:], CachedResponse{
 				ResponseType: DataResponse,
-				Data:         a.Data(Z),
-				MimeType:     Z.MimeTypes()[a.Mimetype],
+				Data:         a.Data(),
+				MimeType:     a.MimeType(),
 			})
 		}
 
@@ -96,7 +95,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.Parse()
 	if *path == "" {
-		panic(errors.New("Provide a zim file path"))
+		panic(errors.New("provide a zim file path"))
 
 	}
 	http.HandleFunc("/", handler)
@@ -105,8 +104,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println(runtime.GOARCH)
 
 	// the need of a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...

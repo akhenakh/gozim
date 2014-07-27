@@ -16,24 +16,29 @@ const (
 )
 
 type Article struct {
-	URLPtr     uint64
-	Mimetype   uint16
-	Namespace  byte
-	URL        string
+	// EntryType is a RedirectEntry/LinkTargetEntry/DeletedEntry or an idx
+	// pointing to ZimReader.mimeTypeList
+	EntryType  uint16
 	Title      string
-	Blob       uint32
-	Cluster    uint32
+	uRLPtr     uint64
+	namespace  byte
+	url        string
+	blob       uint32
+	cluster    uint32
 	RedirectTo *Article
+	z          *ZimReader
 }
 
+// Fill an article with datas found at offset
 func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
-	a.URLPtr = offset
+	a.z = z
+	a.uRLPtr = offset
 
 	mimeIdx, err := readInt16(z.getBytesRangeAt(offset, offset+2))
 	if err != nil {
 		panic(err)
 	}
-	a.Mimetype = mimeIdx
+	a.EntryType = mimeIdx
 
 	// Linktarget or Target Entry
 	if mimeIdx == LinkTargetEntry || mimeIdx == DeletedEntry {
@@ -41,14 +46,14 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 		return nil
 	}
 
-	a.Namespace = z.getByteAt(offset + 3)
+	a.namespace = z.getByteAt(offset + 3)
 
-	a.Cluster, err = readInt32(z.getBytesRangeAt(offset+8, offset+8+4))
+	a.cluster, err = readInt32(z.getBytesRangeAt(offset+8, offset+8+4))
 	if err != nil {
 		panic(err)
 	}
 
-	a.Blob, err = readInt32(z.getBytesRangeAt(offset+12, offset+12+4))
+	a.blob, err = readInt32(z.getBytesRangeAt(offset+12, offset+12+4))
 	if err != nil {
 		panic(err)
 	}
@@ -56,18 +61,18 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	// Redirect
 	if mimeIdx == RedirectEntry {
 		// check for a possible loop: the redirect could point to the same target
-		if z.GetUrlOffsetAtIdx(a.Cluster) != offset {
+		if z.getURLOffsetAtIdx(a.cluster) != offset {
 			// redirect ptr share the same memory offset than Cluster number
-			a.RedirectTo = z.getArticleAt(z.GetUrlOffsetAtIdx(a.Cluster))
+			a.RedirectTo = z.getArticleAt(z.getURLOffsetAtIdx(a.cluster))
 		}
 
 		// assume the url + title won't be longer than 2k
 		b := bytes.NewBuffer(z.getBytesRangeAt(offset+12, offset+12+2048))
-		a.URL, err = b.ReadString('\x00')
+		a.url, err = b.ReadString('\x00')
 		if err != nil {
 			panic(err)
 		}
-		a.URL = strings.TrimRight(string(a.URL), "\x00")
+		a.url = strings.TrimRight(string(a.url), "\x00")
 
 		a.Title, err = b.ReadString('\x00')
 		if err != nil {
@@ -79,11 +84,11 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	}
 
 	b := bytes.NewBuffer(z.getBytesRangeAt(offset+16, offset+16+2048))
-	a.URL, err = b.ReadString('\x00')
+	a.url, err = b.ReadString('\x00')
 	if err != nil {
 		panic(err)
 	}
-	a.URL = strings.TrimRight(string(a.URL), "\x00")
+	a.url = strings.TrimRight(string(a.url), "\x00")
 
 	a.Title, err = b.ReadString('\x00')
 	if err != nil {
@@ -102,18 +107,17 @@ func (z *ZimReader) getArticleAt(offset uint64) *Article {
 }
 
 // return the uncompressed data associated with this article
-func (a *Article) Data(z *ZimReader) []byte {
+func (a *Article) Data() []byte {
 	// ensure we have data to read
-	if a.Mimetype == RedirectEntry || a.Mimetype == LinkTargetEntry || a.Mimetype == DeletedEntry {
+	if a.EntryType == RedirectEntry || a.EntryType == LinkTargetEntry || a.EntryType == DeletedEntry {
 		return nil
 	}
-	start, end := z.getClusterOffsetsAtIdx(a.Cluster)
-	fmt.Println(start)
-	compression := uint8(z.getByteAt(start))
+	start, end := a.z.getClusterOffsetsAtIdx(a.cluster)
+	compression := uint8(a.z.getByteAt(start))
 
 	// LZMA
 	if compression == 4 {
-		b := bytes.NewBuffer(z.getBytesRangeAt(start+1, end+1))
+		b := bytes.NewBuffer(a.z.getBytesRangeAt(start+1, end+1))
 		dec, err := xz.NewReader(b)
 		defer dec.Close()
 		if err != nil {
@@ -130,12 +134,12 @@ func (a *Article) Data(z *ZimReader) []byte {
 		// blob starts at offset, blob ends at offset
 		var bs, be uint32
 
-		bs, err = readInt32(blob[a.Blob*4 : a.Blob*4+4])
+		bs, err = readInt32(blob[a.blob*4 : a.blob*4+4])
 		if err != nil {
 			panic(err)
 		}
 
-		be, err = readInt32(blob[a.Blob*4+4 : a.Blob*4+4+4])
+		be, err = readInt32(blob[a.blob*4+4 : a.blob*4+4+4])
 		if err != nil {
 			panic(err)
 		}
@@ -146,13 +150,26 @@ func (a *Article) Data(z *ZimReader) []byte {
 	return nil
 }
 
+func (a *Article) MimeType() string {
+	if a.EntryType == RedirectEntry || a.EntryType == LinkTargetEntry || a.EntryType == DeletedEntry {
+		return ""
+	}
+
+	return a.z.mimeTypeList[a.EntryType]
+}
+
 // return the url prefixed by the namespace
 func (a *Article) FullURL() string {
-	return string(a.Namespace) + "/" + a.URL
+	return string(a.namespace) + "/" + a.url
+}
+
+func (a *Article) String() string {
+	return fmt.Sprintf("Mime: 0x%x URL: [%s], Title: [%s], Cluster: 0x%x Blob: 0x%x",
+		a.EntryType, a.FullURL(), a.Title, a.cluster, a.blob)
 }
 
 func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
-	idx := a.Blob
+	idx := a.blob
 	offset := z.clusterPtrPos + uint64(idx)*8
 	start, err := readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
@@ -164,9 +181,4 @@ func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
 		panic(err)
 	}
 	return
-}
-
-func (a *Article) String() string {
-	return fmt.Sprintf("Mime: 0x%x URL: [%s], Title: [%s], Cluster: 0x%x Blob: 0x%x",
-		a.Mimetype, a.URL, a.Title, a.Cluster, a.Blob)
 }

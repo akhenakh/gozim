@@ -12,10 +12,11 @@ import (
 )
 
 const (
-	ZIM       = 72173914
+	zimHeader = 72173914
 	chunkSize = (1 << 31) - 2
 )
 
+// ZimReader keep tracks of everything related to ZIM reading
 type ZimReader struct {
 	f             *os.File
 	mmap          [][]byte
@@ -43,9 +44,8 @@ func NewReader(path string) (*ZimReader, error) {
 		panic(err)
 	}
 
+	// if the file is smaller than 2GB or running on amd64 (so 64 bits) use mmap to read the file
 	if uint64(fi.Size()) < chunkSize || runtime.GOARCH == "amd64" {
-		fmt.Println("Using 64 bits addressing")
-
 		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
 		if err != nil {
 			panic(err)
@@ -56,8 +56,6 @@ func NewReader(path string) (*ZimReader, error) {
 		// 32-bit architecture such as Intel's IA-32 can only directly address 4 GiB or smaller portions
 		// of files. An even smaller amount of addressible space is available to individual programs
 		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
-		fmt.Println("Using 32 bits addressing")
-
 		splits := int64(fi.Size() / chunkSize)
 		var i int64
 		for i = 0; i <= splits; i++ {
@@ -72,6 +70,100 @@ func NewReader(path string) (*ZimReader, error) {
 	return &z, err
 }
 
+// Return an ordered list of mime types present in the ZIM file
+func (z *ZimReader) MimeTypes() []string {
+	if len(z.mimeTypeList) != 0 {
+		return z.mimeTypeList
+	}
+
+	var s []string
+	// assume mime list fit in 2k
+	b := bytes.NewBuffer(z.getBytesRangeAt(z.mimeListPos, z.mimeListPos+2048))
+
+	for {
+		line, err := b.ReadBytes('\x00')
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+		// a line of 1 is a line containing only \x00 and it's the marker for the
+		// end of mime types list
+		if len(line) == 1 {
+			break
+		}
+		s = append(s, strings.TrimRight(string(line), "\x00"))
+	}
+	z.mimeTypeList = s
+	return s
+}
+
+// list all urls contained in a zim file
+// note that this is a slow implementation, a real iterator is faster
+// but you are not suppose to use this method on big zim files, use indexes
+func (z *ZimReader) ListArticles() <-chan *Article {
+	ch := make(chan *Article, 10)
+
+	go func() {
+		var idx uint32
+		// starting at 1 to avoid "con" entry
+		var start uint32 = 1
+
+		for idx = start; idx < z.ArticleCount; idx++ {
+			offset := z.getURLOffsetAtIdx(idx)
+			art := z.getArticleAt(offset)
+			if art == nil {
+				//TODO: deal with redirect continue
+			}
+			ch <- art
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+// return the article at the exact url not using any index this is really slow on big ZIM
+func (z *ZimReader) GetPageNoIndex(url string) *Article {
+	var idx uint32
+	// starting at 1 to avoid "con" entry
+	var start uint32 = 1
+
+	art := new(Article)
+	for idx = start; idx < z.ArticleCount; idx++ {
+		offset := z.getURLOffsetAtIdx(idx)
+		art = z.FillArticleAt(art, offset)
+		if art.FullURL() == url {
+			return art
+		}
+	}
+	return nil
+}
+
+// return the article main page if it exists
+func (z *ZimReader) GetMainPage() *Article {
+	if z.mainPage == 0xffffffff {
+		return nil
+	}
+	return z.getArticleAt(z.getURLOffsetAtIdx(z.mainPage))
+}
+
+// Don't forget to close your zimreader
+func (z *ZimReader) Close() {
+	for _, m := range z.mmap {
+		syscall.Munmap(m)
+	}
+	z.f.Close()
+}
+
+func (z *ZimReader) String() string {
+	fi, err := z.f.Stat()
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("Size: %d, ArticleCount: %d urlPtrPos: 0x%x titlePtrPos: 0x%x mimeListPos: 0x%x clusterPtrPos: 0x%x\nMimeTypes: %v",
+		fi.Size(), z.ArticleCount, z.urlPtrPos, z.titlePtrPos, z.mimeListPos, z.clusterPtrPos, z.MimeTypes())
+}
+
+// getBytesRangeAt returns bytes from start to end
+// it's needed to abstract mmap usage vs fseek/read
 func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 	if len(z.mmap) == 1 {
 		return z.mmap[0][start:end]
@@ -80,10 +172,9 @@ func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 	fne := end / chunkSize
 	if fns == fne {
 		return z.mmap[fns][start%chunkSize : end%chunkSize]
-	} else {
-		//TODO: end is on another segment
-		fmt.Println("read end on over file not implemented yet")
 	}
+
+	fmt.Println("read end on over file not implemented yet")
 
 	return nil
 }
@@ -105,8 +196,8 @@ func (z *ZimReader) readFileHeaders() error {
 	if err != nil {
 		panic(err)
 	}
-	if v != ZIM {
-		return errors.New("Not a ZIM file")
+	if v != zimHeader {
+		return errors.New("not a ZIM file")
 	}
 
 	// checking for version
@@ -115,7 +206,7 @@ func (z *ZimReader) readFileHeaders() error {
 		panic(err)
 	}
 	if v != 5 {
-		return errors.New("Unsupported version 5 only")
+		return errors.New("unsupported version 5 only")
 	}
 
 	// checking for articles count
@@ -178,58 +269,8 @@ func (z *ZimReader) readFileHeaders() error {
 	return err
 }
 
-// Return an ordered list of mime types present in the ZIM file
-func (z *ZimReader) MimeTypes() []string {
-	if len(z.mimeTypeList) != 0 {
-		return z.mimeTypeList
-	}
-
-	var s []string
-	// assume mime list fit in 2k
-	b := bytes.NewBuffer(z.getBytesRangeAt(z.mimeListPos, z.mimeListPos+2048))
-
-	for {
-		line, err := b.ReadBytes('\x00')
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-		// a line of 1 is a line containing only \x00 and it's the marker for the
-		// end of mime types list
-		if len(line) == 1 {
-			break
-		}
-		s = append(s, strings.TrimRight(string(line), "\x00"))
-	}
-	z.mimeTypeList = s
-	return s
-}
-
-// list all urls contained in a zim file
-// note that this is a slow implementation, a real iterator is faster
-// but you are not suppose to use this method on big zim files, use indexes
-func (z *ZimReader) ListArticles() <-chan *Article {
-	ch := make(chan *Article, 10)
-
-	go func() {
-		var idx uint32
-		// starting at 1 to avoid "con" entry
-		var start uint32 = 1
-
-		for idx = start; idx < z.ArticleCount; idx++ {
-			offset := z.GetUrlOffsetAtIdx(idx)
-			art := z.getArticleAt(offset)
-			if art == nil {
-				//TODO: deal with redirect continue
-			}
-			ch <- art
-		}
-		close(ch)
-	}()
-	return ch
-}
-
 // get the offset in the zim pointing to URL at index pos
-func (z *ZimReader) GetUrlOffsetAtIdx(idx uint32) uint64 {
+func (z *ZimReader) getURLOffsetAtIdx(idx uint32) uint64 {
 	offset := z.urlPtrPos + uint64(idx)*8
 	v, err := readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
@@ -238,7 +279,7 @@ func (z *ZimReader) GetUrlOffsetAtIdx(idx uint32) uint64 {
 	return v
 }
 
-// return the start and end offsets for cluster idx
+// return data at start and end offsets for cluster idx
 func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	offset := z.clusterPtrPos + (uint64(idx) * 8)
 	start, err := readInt64(z.getBytesRangeAt(offset, offset+8))
@@ -250,47 +291,6 @@ func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	if err != nil {
 		panic(err)
 	}
-	end -= 1
+	end--
 	return
-}
-
-// return the article at the exact url not using any index this is really slow on big ZIM
-func (z *ZimReader) GetPageNoIndex(url string) *Article {
-	var idx uint32
-	// starting at 1 to avoid "con" entry
-	var start uint32 = 1
-
-	art := new(Article)
-	for idx = start; idx < z.ArticleCount; idx++ {
-		offset := z.GetUrlOffsetAtIdx(idx)
-		art = z.FillArticleAt(art, offset)
-		if art.FullURL() == url {
-			return art
-		}
-	}
-	return nil
-}
-
-// return the article main page if it exists
-func (z *ZimReader) GetMainPage() *Article {
-	if z.mainPage == 0xffffffff {
-		return nil
-	}
-	return z.getArticleAt(z.GetUrlOffsetAtIdx(z.mainPage))
-}
-
-func (z *ZimReader) Close() {
-	for _, m := range z.mmap {
-		syscall.Munmap(m)
-	}
-	z.f.Close()
-}
-
-func (z *ZimReader) String() string {
-	fi, err := z.f.Stat()
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("Size: %d, ArticleCount: %d urlPtrPos: 0x%x titlePtrPos: 0x%x mimeListPos: 0x%x clusterPtrPos: 0x%x\nMimeTypes: %v",
-		fi.Size(), z.ArticleCount, z.urlPtrPos, z.titlePtrPos, z.mimeListPos, z.clusterPtrPos, z.MimeTypes())
 }

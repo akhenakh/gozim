@@ -13,7 +13,6 @@ func setup(t *testing.T) {
 		}
 		Z = z
 	}
-
 }
 
 func TestOpen(t *testing.T) {
@@ -40,11 +39,11 @@ func TestDisplayInfost(t *testing.T) {
 	t.Log(info)
 }
 
-func TestGetUrlAtIdx(t *testing.T) {
+func TestGetURLAtIdx(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(4999)
+	p := Z.getURLOffsetAtIdx(4999)
 	if Z.getArticleAt(p) == nil {
 		t.Errorf("Can't find 1st url")
 	}
@@ -54,7 +53,7 @@ func TestDisplayArticle(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(4999)
+	p := Z.getURLOffsetAtIdx(4999)
 
 	var a *Article
 	if a = Z.getArticleAt(p); a == nil {
@@ -102,10 +101,10 @@ func TestData(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetUrlOffsetAtIdx(2522170)
+	p := Z.getURLOffsetAtIdx(2522170)
 	a := Z.getArticleAt(p)
-	data := string(a.Data(Z))
-	if a.Mimetype != RedirectEntry {
+	data := string(a.Data())
+	if a.EntryType != RedirectEntry {
 		if len(data) == 0 {
 			t.Error("can't read data")
 		}
