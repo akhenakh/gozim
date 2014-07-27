@@ -42,7 +42,7 @@ func NewReader(path string) (*ZimReader, error) {
 		panic(err)
 	}
 
-	if int(fi.Size()) < 1<<31 || runtime.GOARCH == "amd64" {
+	if uint64(fi.Size()) < (1<<31) || runtime.GOARCH == "amd64" {
 		fmt.Println("Using 64 bits addressing")
 
 		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
