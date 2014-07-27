@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	ZIM = 72173914
+	ZIM       = 72173914
+	chunkSize = (1 << 31) - 1
 )
 
 type ZimReader struct {
@@ -57,10 +58,10 @@ func NewReader(path string) (*ZimReader, error) {
 		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
 		fmt.Println("Using 32 bits addressing")
 
-		splits := int64(fi.Size() / (1 << 31))
+		splits := int64(fi.Size() / chunkSize)
 		var i int64
 		for i = 0; i <= splits; i++ {
-			mmap, err := syscall.Mmap(int(f.Fd()), i*(1<<31), 1<<31, syscall.PROT_READ, syscall.MAP_SHARED)
+			mmap, err := syscall.Mmap(int(f.Fd()), i*chunkSize, chunkSize, syscall.PROT_READ, syscall.MAP_SHARED)
 			if err != nil {
 				panic(err)
 			}
@@ -77,10 +78,10 @@ func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 	if len(z.mmap) == 1 {
 		return z.mmap[0][start:end]
 	}
-	fns := start / (1 << 31)
-	fne := end / (1 << 31)
+	fns := start / chunkSize
+	fne := end / chunkSize
 	if fns == fne {
-		return z.mmap[fns][start%(1<<31) : end%(1<<31)]
+		return z.mmap[fns][start%chunkSize : end%chunkSize]
 	} else {
 		//TODO: end is on another segment
 		fmt.Println("read end on over file not implemented yet")
@@ -94,8 +95,8 @@ func (z *ZimReader) getByteAt(offset uint64) byte {
 		return z.mmap[0][offset]
 	}
 
-	fn := offset / (1 << 31)
-	return z.mmap[fn][offset%(1<<31)]
+	fn := offset / chunkSize
+	return z.mmap[fn][offset%chunkSize]
 }
 
 // populate the ZimReader structs with headers
