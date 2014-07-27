@@ -13,7 +13,7 @@ import (
 
 const (
 	ZIM       = 72173914
-	chunkSize = (1 << 31) - 1
+	chunkSize = (1 << 31) - 2
 )
 
 type ZimReader struct {
@@ -43,7 +43,7 @@ func NewReader(path string) (*ZimReader, error) {
 		panic(err)
 	}
 
-	if uint64(fi.Size()) < (1<<31) || runtime.GOARCH == "amd64" {
+	if uint64(fi.Size()) < chunkSize || runtime.GOARCH == "amd64" {
 		fmt.Println("Using 64 bits addressing")
 
 		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
@@ -61,15 +61,13 @@ func NewReader(path string) (*ZimReader, error) {
 		splits := int64(fi.Size() / chunkSize)
 		var i int64
 		for i = 0; i <= splits; i++ {
-			mmap, err := syscall.Mmap(int(f.Fd()), i*chunkSize, chunkSize, syscall.PROT_READ, syscall.MAP_SHARED)
+			mmap, err := syscall.Mmap(int(f.Fd()), i*chunkSize, chunkSize, syscall.PROT_READ, syscall.MAP_PRIVATE|syscall.MAP_NORESERVE)
 			if err != nil {
 				panic(err)
 			}
 			z.mmap = append(z.mmap, mmap)
 		}
-
 	}
-
 	err = z.readFileHeaders()
 	return &z, err
 }
