@@ -57,9 +57,10 @@ func NewReader(path string) (*ZimReader, error) {
 		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
 		fmt.Println("Using 32 bits addressing")
 
-		splits := int(fi.Size() / (1 << 31))
-		for i := 0; i <= splits; i++ {
-			mmap, err := syscall.Mmap(int(f.Fd()), 0*1<<31, 1<<31, syscall.PROT_READ, syscall.MAP_SHARED)
+		splits := int64(fi.Size() / (1 << 31))
+		var i int64
+		for i = 0; i <= splits; i++ {
+			mmap, err := syscall.Mmap(int(f.Fd()), i*(1<<31), 1<<31, syscall.PROT_READ, syscall.MAP_SHARED)
 			if err != nil {
 				panic(err)
 			}
@@ -94,7 +95,7 @@ func (z *ZimReader) getByteAt(offset uint64) byte {
 	}
 
 	fn := offset / (1 << 31)
-	return z.mmap[fn][offset%1<<31]
+	return z.mmap[fn][offset%(1<<31)]
 }
 
 // populate the ZimReader structs with headers
