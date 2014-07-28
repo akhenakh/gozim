@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -19,7 +20,7 @@ const (
 // ZimReader keep tracks of everything related to ZIM reading
 type ZimReader struct {
 	f             *os.File
-	mmap          [][]byte
+	mmap          []byte
 	ArticleCount  uint32
 	clusterCount  uint32
 	urlPtrPos     uint64
@@ -29,6 +30,12 @@ type ZimReader struct {
 	mainPage      uint32
 	layoutPage    uint32
 	mimeTypeList  []string
+	// this mutex is used on 32 bits system only to securise access to one mmap at a time
+	sync.Mutex
+	// currentSeg indicates which segment is currently mmaped
+	currentSeg int
+	// totalSeg indicates how many chunks are used to slice the zim file (file size / chunkSize)
+	totalSeg int
 }
 
 // create a new zim reader
@@ -44,26 +51,31 @@ func NewReader(path string) (*ZimReader, error) {
 		panic(err)
 	}
 
+	// informing now segment are loaded yet
+	z.currentSeg = -1
+
 	// if the file is smaller than 2GB or running on amd64 (so 64 bits) use mmap to read the file
 	if uint64(fi.Size()) < chunkSize || runtime.GOARCH == "amd64" {
 		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
 		if err != nil {
 			panic(err)
 		}
-		z.mmap = make([][]byte, 1)
-		z.mmap[0] = mmap
+		z.currentSeg = 0
+		z.totalSeg = 1
+		z.mmap = mmap
 	} else {
 		// 32-bit architecture such as Intel's IA-32 can only directly address 4 GiB or smaller portions
 		// of files. An even smaller amount of addressible space is available to individual programs
 		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
-		splits := int64(fi.Size() / chunkSize)
-		var i int64
-		for i = 0; i <= splits; i++ {
-			mmap, err := syscall.Mmap(int(f.Fd()), i*chunkSize, chunkSize, syscall.PROT_READ, syscall.MAP_PRIVATE|syscall.MAP_NORESERVE)
-			if err != nil {
-				panic(err)
-			}
-			z.mmap = append(z.mmap, mmap)
+
+		z.totalSeg = int(fi.Size()/chunkSize) + 1
+
+		fmt.Printf("Using 32 bits addressing %d segments\n", z.totalSeg)
+
+		// mmap the 1st segment
+		err = z.mmapSliceIdx(0)
+		if err != nil {
+			panic(err)
 		}
 	}
 	err = z.readFileHeaders()
@@ -145,11 +157,9 @@ func (z *ZimReader) GetMainPage() *Article {
 	return z.getArticleAt(z.getURLOffsetAtIdx(z.mainPage))
 }
 
-// Don't forget to close your zimreader
+// Close & cleanup the zimreader
 func (z *ZimReader) Close() {
-	for _, m := range z.mmap {
-		syscall.Munmap(m)
-	}
+	syscall.Munmap(z.mmap)
 	z.f.Close()
 }
 
@@ -163,29 +173,71 @@ func (z *ZimReader) String() string {
 }
 
 // getBytesRangeAt returns bytes from start to end
-// it's needed to abstract mmap usage vs fseek/read
+// it's needed to abstract mmap usages rather than read directly on the mmap slices
 func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
-	if len(z.mmap) == 1 {
-		return z.mmap[0][start:end]
+	if z.totalSeg == 1 {
+		return z.mmap[start:end]
 	}
-	fns := start / chunkSize
-	fne := end / chunkSize
-	if fns == fne {
-		return z.mmap[fns][start%chunkSize : end%chunkSize]
+	fns := int(start / chunkSize)
+	fne := int(end / chunkSize)
+
+	z.Lock()
+	defer z.Unlock()
+
+	if fns != z.currentSeg {
+		fmt.Println("Need over slice")
+		err := z.mmapSliceIdx(fns)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	fmt.Println("read end on over file not implemented yet")
+	if fns == fne {
+		return z.mmap[start%chunkSize : end%chunkSize]
+	}
+
+	fmt.Println("end is on the over file not implemented yet")
 
 	return nil
 }
 
 func (z *ZimReader) getByteAt(offset uint64) byte {
-	if len(z.mmap) == 1 {
-		return z.mmap[0][offset]
+	if z.totalSeg == 1 {
+		return z.mmap[offset]
 	}
 
-	fn := offset / chunkSize
-	return z.mmap[fn][offset%chunkSize]
+	z.Lock()
+	defer z.Unlock()
+
+	seg := int(offset / chunkSize)
+
+	if seg != z.currentSeg {
+		err := z.mmapSliceIdx(seg)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return z.mmap[offset%chunkSize]
+}
+
+func (z *ZimReader) mmapSliceIdx(idx int) error {
+	if idx == z.currentSeg {
+		return nil
+	}
+
+	if idx >= z.totalSeg {
+		return errors.New("idx higher than total segments")
+	}
+
+	syscall.Munmap(z.mmap)
+	mmap, err := syscall.Mmap(int(z.f.Fd()), int64(idx)*chunkSize, chunkSize, syscall.PROT_READ, syscall.MAP_PRIVATE|syscall.MAP_NORESERVE)
+	if err != nil {
+		panic(err)
+	}
+	z.currentSeg = idx
+	z.mmap = mmap
+	return nil
 }
 
 // populate the ZimReader structs with headers
@@ -206,7 +258,7 @@ func (z *ZimReader) readFileHeaders() error {
 		panic(err)
 	}
 	if v != 5 {
-		return errors.New("unsupported version 5 only")
+		return errors.New("unsupported version, 5 only")
 	}
 
 	// checking for articles count

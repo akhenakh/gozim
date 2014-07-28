@@ -10,12 +10,13 @@ import (
 	"github.com/golang/groupcache/lru"
 )
 
-type ResponseType uint16
+//
+type ResponseType int8
 
 const (
-	RedirectResponse ResponseType = 0xffff
-	DataResponse                  = 0x0000
-	NoResponse                    = 0x0404
+	RedirectResponse ResponseType = iota
+	DataResponse
+	NoResponse
 )
 
 type CachedResponse struct {
@@ -57,7 +58,7 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 func handler(w http.ResponseWriter, r *http.Request) {
 
 	url := r.URL.Path[1:]
-
+	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
 		handleCachedResponse(cr, w, r)
 		return
@@ -72,13 +73,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if a == nil {
-			Cache.Add(r.URL.Path[1:], CachedResponse{ResponseType: NoResponse})
+			Cache.Add(url, CachedResponse{ResponseType: NoResponse})
 		} else if a.EntryType == zim.RedirectEntry {
-			Cache.Add(r.URL.Path[1:], CachedResponse{
+			Cache.Add(url, CachedResponse{
 				ResponseType: RedirectResponse,
 				Data:         []byte(a.RedirectTo.FullURL())})
 		} else {
-			Cache.Add(r.URL.Path[1:], CachedResponse{
+			Cache.Add(url, CachedResponse{
 				ResponseType: DataResponse,
 				Data:         a.Data(),
 				MimeType:     a.MimeType(),
@@ -107,6 +108,7 @@ func main() {
 
 	// the need of a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
+	// this is less important when using indexes
 	Cache = lru.New(30)
 
 	http.ListenAndServe(":8080", nil)

@@ -145,6 +145,8 @@ func (a *Article) Data() []byte {
 		}
 
 		return blob[bs:be]
+	} else {
+		fmt.Println("Unhandled compression")
 	}
 
 	return nil
