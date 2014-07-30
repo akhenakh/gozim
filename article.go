@@ -117,6 +117,9 @@ func (a *Article) Data() []byte {
 	s := a.z.getBytesRangeAt(start, start+1)
 	compression := uint8(s[0])
 
+	// blob starts at offset, blob ends at offset
+	var bs, be uint32
+
 	// LZMA
 	if compression == 4 {
 		b := bytes.NewBuffer(a.z.getBytesRangeAt(start+1, end+1))
@@ -133,9 +136,6 @@ func (a *Article) Data() []byte {
 			panic(err)
 		}
 
-		// blob starts at offset, blob ends at offset
-		var bs, be uint32
-
 		bs, err = readInt32(blob[a.blob*4 : a.blob*4+4])
 		if err != nil {
 			panic(err)
@@ -147,9 +147,26 @@ func (a *Article) Data() []byte {
 		}
 
 		return blob[bs:be]
-	} else {
-		fmt.Println("Unhandled compression")
+
+	} else if compression == 0 {
+		// un compresssed
+		startPos := start + 1
+		blobOffset := uint64(a.blob * 4)
+
+		bs, err := readInt32(a.z.getBytesRangeAt(startPos+blobOffset, startPos+blobOffset+4))
+		if err != nil {
+			panic(err)
+		}
+
+		be, err = readInt32(a.z.getBytesRangeAt(blobOffset+4, blobOffset+4+4))
+		if err != nil {
+			panic(err)
+		}
+
+		return a.z.getBytesRangeAt(startPos+uint64(bs), startPos+uint64(be))
 	}
+
+	fmt.Println("Unhandled compression")
 
 	return nil
 }
