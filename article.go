@@ -148,7 +148,7 @@ func (a *Article) Data() []byte {
 
 		return blob[bs:be]
 
-	} else if compression == 0 {
+	} else if compression == 0 || compression == 1 {
 		// un compresssed
 		startPos := start + 1
 		blobOffset := uint64(a.blob * 4)
@@ -158,10 +158,12 @@ func (a *Article) Data() []byte {
 			panic(err)
 		}
 
-		be, err = readInt32(a.z.getBytesRangeAt(blobOffset+4, blobOffset+4+4))
+		be, err = readInt32(a.z.getBytesRangeAt(startPos+blobOffset+4, startPos+blobOffset+4+4))
 		if err != nil {
 			panic(err)
 		}
+
+		fmt.Println(a.FullURL(), startPos, blobOffset, bs, be)
 
 		return a.z.getBytesRangeAt(startPos+uint64(bs), startPos+uint64(be))
 	}

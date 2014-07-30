@@ -6,7 +6,7 @@ var Z *ZimReader
 
 func setup(t *testing.T) {
 	if Z == nil {
-		z, err := NewReader("test.zim")
+		z, err := NewReader("test.zim", false)
 
 		if err != nil {
 			t.Errorf("Can't read %v", err)
@@ -20,6 +20,19 @@ func TestOpen(t *testing.T) {
 	if Z.ArticleCount == 0 {
 		t.Errorf("No article found")
 	}
+}
+
+func TestOpenMmap(t *testing.T) {
+	z, err := NewReader("test.zim", true)
+
+	if err != nil {
+		t.Errorf("Can't read %v", err)
+	}
+	if z.ArticleCount == 0 {
+		t.Errorf("No article found")
+	}
+
+	z.Close()
 }
 
 func TestMime(t *testing.T) {

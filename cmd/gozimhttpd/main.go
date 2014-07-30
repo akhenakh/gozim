@@ -27,6 +27,7 @@ type CachedResponse struct {
 
 var (
 	path  = flag.String("path", "", "path for the zim file")
+	mmap  = flag.Bool("mmap", false, "use mmap")
 	Z     *zim.ZimReader
 	Cache *lru.Cache
 )
@@ -97,10 +98,14 @@ func main() {
 	flag.Parse()
 	if *path == "" {
 		panic(errors.New("provide a zim file path"))
-
 	}
+
+	if *mmap {
+		fmt.Println("Using mmap")
+	}
+
 	http.HandleFunc("/", handler)
-	z, err := zim.NewReader(*path)
+	z, err := zim.NewReader(*path, *mmap)
 	Z = z
 	if err != nil {
 		panic(err)

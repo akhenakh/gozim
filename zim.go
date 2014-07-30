@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"syscall"
 )
 
 const (
@@ -25,16 +26,38 @@ type ZimReader struct {
 	mainPage      uint32
 	layoutPage    uint32
 	mimeTypeList  []string
-	size          int64
+	mmap          []byte
 }
 
 // create a new zim reader
-func NewReader(path string) (*ZimReader, error) {
+func NewReader(path string, mmap bool) (*ZimReader, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
 	z := ZimReader{f: f, mainPage: 0xffffffff, layoutPage: 0xffffffff}
+
+	fi, err := f.Stat()
+	if err != nil {
+		panic(err)
+	}
+
+	size := fi.Size()
+
+	if mmap {
+		// we need a multiple of page size bigger than the file
+		pc := size / int64(os.Getpagesize())
+		totalMmap := pc*int64(os.Getpagesize()) + int64(os.Getpagesize())
+		if (size % int64(os.Getpagesize())) == 0 {
+			totalMmap = size
+		}
+
+		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(totalMmap), syscall.PROT_READ, syscall.MAP_PRIVATE)
+		if err != nil {
+			panic(err)
+		}
+		z.mmap = mmap
+	}
 
 	err = z.readFileHeaders()
 	return &z, err
@@ -132,6 +155,10 @@ func (z *ZimReader) String() string {
 // getBytesRangeAt returns bytes from start to end
 // it's needed to abstract mmap usages rather than read directly on the mmap slices
 func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
+	if len(z.mmap) > 0 {
+		return z.mmap[start:end]
+	}
+
 	buf := make([]byte, end-start)
 	n, err := z.f.ReadAt(buf, int64(start))
 	if err != nil {
