@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"strings"
-	"sync"
-	"syscall"
 )
 
 const (
@@ -19,7 +16,6 @@ const (
 // ZimReader keep tracks of everything related to ZIM reading
 type ZimReader struct {
 	f             *os.File
-	mmap          []byte
 	ArticleCount  uint32
 	clusterCount  uint32
 	urlPtrPos     uint64
@@ -30,14 +26,6 @@ type ZimReader struct {
 	layoutPage    uint32
 	mimeTypeList  []string
 	size          int64
-	// this mutex is used on 32 bits system only to securise access to one mmap at a time
-	sync.Mutex
-	// currentSeg indicates which segment is currently mmaped
-	currentSeg int
-	// totalSeg indicates how many chunks are used to slice the zim file (file size / chunkSize)
-	totalSeg int
-	// chunkSize needs to be a multiple of os.Getpagesize() for mmap
-	segSize int
 }
 
 // create a new zim reader
@@ -48,44 +36,6 @@ func NewReader(path string) (*ZimReader, error) {
 	}
 	z := ZimReader{f: f, mainPage: 0xffffffff, layoutPage: 0xffffffff}
 
-	fi, err := f.Stat()
-	if err != nil {
-		panic(err)
-	}
-
-	z.size = fi.Size()
-
-	// informing now segment are loaded yet
-	z.currentSeg = -1
-
-	// if the file is smaller than 2GB or running on amd64 (so 64 bits) use mmap to read the file
-	if uint64(z.size) < uint64(z.segSize) || runtime.GOARCH == "amd64" {
-		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(z.size), syscall.PROT_READ, syscall.MAP_PRIVATE)
-		if err != nil {
-			panic(err)
-		}
-		z.currentSeg = 0
-		z.totalSeg = 1
-		z.mmap = mmap
-	} else {
-		// 32-bit architecture such as Intel's IA-32 can only directly address 4 GiB or smaller portions
-		// of files. An even smaller amount of addressible space is available to individual programs
-		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
-
-		// we need a multiple of page size smaller than 1 << 31 for mmap segments
-		pc := (1 << 31) / os.Getpagesize()
-		z.segSize = pc * os.Getpagesize()
-
-		z.totalSeg = int(fi.Size()/int64(z.segSize)) + 1
-
-		fmt.Printf("Using 32 bits addressing %d segments of %d pageSize %d\n", z.totalSeg, z.segSize, os.Getpagesize())
-
-		// mmap the 1st segment
-		err = z.mmapSliceIdx(0)
-		if err != nil {
-			panic(err)
-		}
-	}
 	err = z.readFileHeaders()
 	return &z, err
 }
@@ -167,7 +117,6 @@ func (z *ZimReader) GetMainPage() *Article {
 
 // Close & cleanup the zimreader
 func (z *ZimReader) Close() {
-	syscall.Munmap(z.mmap)
 	z.f.Close()
 }
 
@@ -183,76 +132,17 @@ func (z *ZimReader) String() string {
 // getBytesRangeAt returns bytes from start to end
 // it's needed to abstract mmap usages rather than read directly on the mmap slices
 func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
-	if z.totalSeg == 1 {
-		return z.mmap[start:end]
-	}
-	fns := int(start) / z.segSize
-	fne := int(end) / z.segSize
-
-	z.Lock()
-	defer z.Unlock()
-
-	if fns != z.currentSeg {
-		err := z.mmapSliceIdx(fns)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if fns == fne {
-		return z.mmap[start%uint64(z.segSize) : end%uint64(z.segSize)]
-	}
-
-	fmt.Println("end is on the over file not implemented yet")
-
-	return nil
-}
-
-func (z *ZimReader) getByteAt(offset uint64) byte {
-	if z.totalSeg == 1 {
-		return z.mmap[offset]
-	}
-
-	z.Lock()
-	defer z.Unlock()
-
-	seg := int(offset) / z.segSize
-
-	if seg != z.currentSeg {
-		err := z.mmapSliceIdx(seg)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return z.mmap[offset%uint64(z.segSize)]
-}
-
-func (z *ZimReader) mmapSliceIdx(idx int) error {
-	if idx == z.currentSeg {
-		return nil
-	}
-
-	if idx >= z.totalSeg {
-		return errors.New("idx higher than total segments")
-	}
-
-	syscall.Munmap(z.mmap)
-
-	// if this is the last segment mmap the correct size
-	mmapSize := z.segSize
-
-	if idx == z.totalSeg-1 {
-		mmapSize = int(z.size)%z.segSize + os.Getpagesize()
-	}
-
-	mmap, err := syscall.Mmap(int(z.f.Fd()), int64(idx*z.segSize), mmapSize, syscall.PROT_READ, syscall.MAP_SHARED)
+	buf := make([]byte, end-start)
+	n, err := z.f.ReadAt(buf, int64(start))
 	if err != nil {
 		panic(err)
 	}
-	z.currentSeg = idx
-	z.mmap = mmap
-	return nil
+
+	if n != int(end-start) {
+		panic(errors.New("can't read enough bytes"))
+	}
+
+	return buf
 }
 
 // populate the ZimReader structs with headers

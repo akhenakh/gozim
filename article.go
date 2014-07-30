@@ -46,7 +46,8 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 		return nil
 	}
 
-	a.namespace = z.getByteAt(offset + 3)
+	s := z.getBytesRangeAt(offset+3, offset+4)
+	a.namespace = s[0]
 
 	a.cluster, err = readInt32(z.getBytesRangeAt(offset+8, offset+8+4))
 	if err != nil {
@@ -113,7 +114,8 @@ func (a *Article) Data() []byte {
 		return nil
 	}
 	start, end := a.z.getClusterOffsetsAtIdx(a.cluster)
-	compression := uint8(a.z.getByteAt(start))
+	s := a.z.getBytesRangeAt(start, start+1)
+	compression := uint8(s[0])
 
 	// LZMA
 	if compression == 4 {
