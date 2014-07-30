@@ -163,8 +163,6 @@ func (a *Article) Data() []byte {
 			panic(err)
 		}
 
-		fmt.Println(a.FullURL(), startPos, blobOffset, bs, be)
-
 		return a.z.getBytesRangeAt(startPos+uint64(bs), startPos+uint64(be))
 	}
 
