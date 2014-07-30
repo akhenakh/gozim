@@ -14,7 +14,6 @@ import (
 
 const (
 	zimHeader = 72173914
-	chunkSize = (1 << 31) - 2
 )
 
 // ZimReader keep tracks of everything related to ZIM reading
@@ -30,12 +29,15 @@ type ZimReader struct {
 	mainPage      uint32
 	layoutPage    uint32
 	mimeTypeList  []string
+	size          int64
 	// this mutex is used on 32 bits system only to securise access to one mmap at a time
 	sync.Mutex
 	// currentSeg indicates which segment is currently mmaped
 	currentSeg int
 	// totalSeg indicates how many chunks are used to slice the zim file (file size / chunkSize)
 	totalSeg int
+	// chunkSize needs to be a multiple of os.Getpagesize() for mmap
+	segSize int
 }
 
 // create a new zim reader
@@ -51,12 +53,14 @@ func NewReader(path string) (*ZimReader, error) {
 		panic(err)
 	}
 
+	z.size = fi.Size()
+
 	// informing now segment are loaded yet
 	z.currentSeg = -1
 
 	// if the file is smaller than 2GB or running on amd64 (so 64 bits) use mmap to read the file
-	if uint64(fi.Size()) < chunkSize || runtime.GOARCH == "amd64" {
-		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(fi.Size()), syscall.PROT_READ, syscall.MAP_SHARED)
+	if uint64(z.size) < uint64(z.segSize) || runtime.GOARCH == "amd64" {
+		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(z.size), syscall.PROT_READ, syscall.MAP_PRIVATE)
 		if err != nil {
 			panic(err)
 		}
@@ -68,9 +72,13 @@ func NewReader(path string) (*ZimReader, error) {
 		// of files. An even smaller amount of addressible space is available to individual programs
 		// typically in the range of 2 to 3 GiB, depending on the operating system kernel.
 
-		z.totalSeg = int(fi.Size()/chunkSize) + 1
+		// we need a multiple of page size smaller than 1 << 31 for mmap segments
+		pc := (1 << 31) / os.Getpagesize()
+		z.segSize = pc * os.Getpagesize()
 
-		fmt.Printf("Using 32 bits addressing %d segments\n", z.totalSeg)
+		z.totalSeg = int(fi.Size()/int64(z.segSize)) + 1
+
+		fmt.Printf("Using 32 bits addressing %d segments of %d pageSize %d\n", z.totalSeg, z.segSize, os.Getpagesize())
 
 		// mmap the 1st segment
 		err = z.mmapSliceIdx(0)
@@ -178,14 +186,13 @@ func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 	if z.totalSeg == 1 {
 		return z.mmap[start:end]
 	}
-	fns := int(start / chunkSize)
-	fne := int(end / chunkSize)
+	fns := int(start) / z.segSize
+	fne := int(end) / z.segSize
 
 	z.Lock()
 	defer z.Unlock()
 
 	if fns != z.currentSeg {
-		fmt.Println("Need over slice")
 		err := z.mmapSliceIdx(fns)
 		if err != nil {
 			panic(err)
@@ -193,7 +200,7 @@ func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 	}
 
 	if fns == fne {
-		return z.mmap[start%chunkSize : end%chunkSize]
+		return z.mmap[start%uint64(z.segSize) : end%uint64(z.segSize)]
 	}
 
 	fmt.Println("end is on the over file not implemented yet")
@@ -209,7 +216,7 @@ func (z *ZimReader) getByteAt(offset uint64) byte {
 	z.Lock()
 	defer z.Unlock()
 
-	seg := int(offset / chunkSize)
+	seg := int(offset) / z.segSize
 
 	if seg != z.currentSeg {
 		err := z.mmapSliceIdx(seg)
@@ -218,7 +225,7 @@ func (z *ZimReader) getByteAt(offset uint64) byte {
 		}
 	}
 
-	return z.mmap[offset%chunkSize]
+	return z.mmap[offset%uint64(z.segSize)]
 }
 
 func (z *ZimReader) mmapSliceIdx(idx int) error {
@@ -231,7 +238,15 @@ func (z *ZimReader) mmapSliceIdx(idx int) error {
 	}
 
 	syscall.Munmap(z.mmap)
-	mmap, err := syscall.Mmap(int(z.f.Fd()), int64(idx)*chunkSize, chunkSize, syscall.PROT_READ, syscall.MAP_PRIVATE|syscall.MAP_NORESERVE)
+
+	// if this is the last segment mmap the correct size
+	mmapSize := z.segSize
+
+	if idx == z.totalSeg-1 {
+		mmapSize = int(z.size)%z.segSize + os.Getpagesize()
+	}
+
+	mmap, err := syscall.Mmap(int(z.f.Fd()), int64(idx*z.segSize), mmapSize, syscall.PROT_READ, syscall.MAP_SHARED)
 	if err != nil {
 		panic(err)
 	}
