@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"runtime/pprof"
 
 	"github.com/akhenakh/gozim"
 	"github.com/golang/groupcache/lru"
+	"github.com/szferi/gomdb"
 )
 
 //
@@ -26,10 +32,15 @@ type CachedResponse struct {
 }
 
 var (
-	path  = flag.String("path", "", "path for the zim file")
-	mmap  = flag.Bool("mmap", false, "use mmap")
+	path       = flag.String("path", "", "path for the zim file")
+	mmap       = flag.Bool("mmap", false, "use mmap")
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 	Z     *zim.ZimReader
 	Cache *lru.Cache
+	idx   bool
+	env   *mdb.Env
+	dbi   mdb.DBI
 )
 
 func cacheLookup(url string) (*CachedResponse, bool) {
@@ -59,6 +70,7 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 func handler(w http.ResponseWriter, r *http.Request) {
 
 	url := r.URL.Path[1:]
+	fmt.Println("requesting", url)
 	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
 		handleCachedResponse(cr, w, r)
@@ -66,9 +78,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		var a *zim.Article
-
-		if url == "index.html" {
-			a = Z.GetMainPage()
+		if idx {
+			txn, _ := env.BeginTxn(nil, mdb.RDONLY)
+			b, _ := txn.Get(dbi, []byte(url))
+			if len(b) != 0 {
+				fmt.Println(url, "found in idx")
+				var v uint64
+				buf := bytes.NewBuffer(b)
+				err := binary.Read(buf, binary.LittleEndian, &v)
+				if err == nil {
+					a = Z.GetArticleAt(v)
+					fmt.Println(url, "found in idx, GetArticleAt")
+				}
+			}
 		} else {
 			a = Z.GetPageNoIndex(url)
 		}
@@ -104,6 +126,44 @@ func main() {
 		fmt.Println("Using mmap")
 	}
 
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			panic(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for _ = range c {
+				pprof.StopCPUProfile()
+				os.Exit(1)
+			}
+		}()
+	}
+
+	// Do we have an index ?
+	pathidx := *path + "idx"
+	if _, err := os.Stat(pathidx); err == nil {
+		fmt.Println("Found indexes")
+		idx = true
+
+		// open the db
+		env, err = mdb.NewEnv()
+		if err != nil {
+			panic(err)
+		}
+
+		err = env.Open(pathidx, 0, 0664)
+		if err != nil {
+			panic(err)
+		}
+		txn, _ := env.BeginTxn(nil, 0)
+		dbi, _ = txn.DBIOpen(nil, 0)
+	}
+
 	http.HandleFunc("/", handler)
 	z, err := zim.NewReader(*path, *mmap)
 	Z = z
@@ -111,10 +171,10 @@ func main() {
 		panic(err)
 	}
 
-	// the need of a cache is absolute
+	// the need for a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
 	// this is less important when using indexes
-	Cache = lru.New(30)
+	Cache = lru.New(40)
 
 	http.ListenAndServe(":8080", nil)
 

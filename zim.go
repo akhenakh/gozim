@@ -102,7 +102,7 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 
 		for idx = start; idx < z.ArticleCount; idx++ {
 			offset := z.getURLOffsetAtIdx(idx)
-			art := z.getArticleAt(offset)
+			art := z.GetArticleAt(offset)
 			if art == nil {
 				//TODO: deal with redirect continue
 			}
@@ -135,7 +135,7 @@ func (z *ZimReader) GetMainPage() *Article {
 	if z.mainPage == 0xffffffff {
 		return nil
 	}
-	return z.getArticleAt(z.getURLOffsetAtIdx(z.mainPage))
+	return z.GetArticleAt(z.getURLOffsetAtIdx(z.mainPage))
 }
 
 // Close & cleanup the zimreader

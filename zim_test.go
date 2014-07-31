@@ -57,7 +57,7 @@ func TestGetURLAtIdx(t *testing.T) {
 
 	// addr 0 is a redirect
 	p := Z.getURLOffsetAtIdx(4999)
-	if Z.getArticleAt(p) == nil {
+	if Z.GetArticleAt(p) == nil {
 		t.Errorf("Can't find 1st url")
 	}
 }
@@ -69,7 +69,7 @@ func TestDisplayArticle(t *testing.T) {
 	p := Z.getURLOffsetAtIdx(4999)
 
 	var a *Article
-	if a = Z.getArticleAt(p); a == nil {
+	if a = Z.GetArticleAt(p); a == nil {
 		t.Errorf("Can't find 1st url")
 	}
 
@@ -115,7 +115,7 @@ func TestData(t *testing.T) {
 
 	// addr 0 is a redirect
 	p := Z.getURLOffsetAtIdx(2522170)
-	a := Z.getArticleAt(p)
+	a := Z.GetArticleAt(p)
 	data := string(a.Data())
 	if a.EntryType != RedirectEntry {
 		if len(data) == 0 {

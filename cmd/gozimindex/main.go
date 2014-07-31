@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	path = flag.String("path", "", "path for the zim file")
-	z    *zim.ZimReader
+	path       = flag.String("path", "", "path for the zim file")
+	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	z          *zim.ZimReader
 )
 
 func main() {
