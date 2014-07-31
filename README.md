@@ -14,5 +14,8 @@ NOT FINISHED YET, API MAY CHANGE
 TODO
 ====
 Agressive cache reponse into browser  
-Use a Pool to list  
-Measure iterator callback vs 
+Use a Pool to buffer ?  
+Mmap 1st 2GB on 32 bits  
+Gzip response  
+Search with stemming  
+
