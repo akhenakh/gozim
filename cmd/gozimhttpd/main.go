@@ -70,7 +70,6 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 func handler(w http.ResponseWriter, r *http.Request) {
 
 	url := r.URL.Path[1:]
-	fmt.Println("requesting", url)
 	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
 		handleCachedResponse(cr, w, r)
@@ -82,17 +81,19 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			txn, _ := env.BeginTxn(nil, mdb.RDONLY)
 			b, _ := txn.Get(dbi, []byte(url))
 			if len(b) != 0 {
-				fmt.Println(url, "found in idx")
 				var v uint64
 				buf := bytes.NewBuffer(b)
 				err := binary.Read(buf, binary.LittleEndian, &v)
 				if err == nil {
 					a = Z.GetArticleAt(v)
-					fmt.Println(url, "found in idx, GetArticleAt")
 				}
 			}
 		} else {
 			a = Z.GetPageNoIndex(url)
+		}
+
+		if a == nil && url == "index.html" {
+			a = Z.GetMainPage()
 		}
 
 		if a == nil {
