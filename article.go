@@ -20,7 +20,7 @@ type Article struct {
 	// pointing to ZimReader.mimeTypeList
 	EntryType  uint16
 	Title      string
-	uRLPtr     uint64
+	URLPtr     uint64
 	namespace  byte
 	url        string
 	blob       uint32
@@ -32,7 +32,7 @@ type Article struct {
 // Fill an article with datas found at offset
 func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	a.z = z
-	a.uRLPtr = offset
+	a.URLPtr = offset
 
 	mimeIdx, err := readInt16(z.getBytesRangeAt(offset, offset+2))
 	if err != nil {
