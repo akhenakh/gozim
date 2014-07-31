@@ -79,6 +79,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		var a *zim.Article
 		if idx {
 			txn, _ := env.BeginTxn(nil, mdb.RDONLY)
+			defer txn.Abort()
 			b, _ := txn.Get(dbi, []byte(url))
 			if len(b) != 0 {
 				var v uint64
