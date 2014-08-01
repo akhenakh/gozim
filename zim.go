@@ -115,17 +115,31 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 
 // return the article at the exact url not using any index this is really slow on big ZIM
 func (z *ZimReader) GetPageNoIndex(url string) *Article {
-	var idx uint32
 	// starting at 1 to avoid "con" entry
-	var start uint32 = 1
+	var start uint32 = 0
+	var stop uint32 = z.ArticleCount
 
 	art := new(Article)
-	for idx = start; idx < z.ArticleCount; idx++ {
-		offset := z.getURLOffsetAtIdx(idx)
+
+	for {
+		pos := (start + stop) / 2
+
+		offset := z.getURLOffsetAtIdx(pos)
+
 		art = z.FillArticleAt(art, offset)
 		if art.FullURL() == url {
 			return art
 		}
+
+		if art.FullURL() > url {
+			stop = pos
+		} else {
+			start = pos
+		}
+		if stop-start == 1 {
+			break
+		}
+
 	}
 	return nil
 }

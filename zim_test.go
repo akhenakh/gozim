@@ -76,6 +76,15 @@ func TestDisplayArticle(t *testing.T) {
 	t.Log(a)
 }
 
+func TestGetPageNoIndex(t *testing.T) {
+	setup(t)
+
+	var a *Article
+	if a = Z.GetPageNoIndex("A/html/1/8/1/7/1817_dans_les_chemins_de_fer.html"); a == nil {
+		t.Errorf("Can't find existing url")
+	}
+}
+
 func TestListArticles(t *testing.T) {
 	setup(t)
 

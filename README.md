@@ -18,5 +18,4 @@ Use a Pool to buffer ?
 Mmap 1st 2GB on 32 bits  
 Gzip response  
 Search with title stemming  
-no index optimization (go to the half of the article count position then compare and so on)  
 
