@@ -13,8 +13,6 @@ NOT FINISHED YET, API MAY CHANGE
 
 TODO
 ====
-local cache not used anymore  
-Agressive cache reponse into browser  
 Use a Pool to buffer ?  
 Mmap 1st 2GB on 32 bits  
 Selective Gzip encode response based on content type  

@@ -62,6 +62,8 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 	} else if cr.ResponseType == DataResponse {
 		fmt.Printf("200 %s\n", r.URL.Path)
 		w.Header().Set("Content-Type", cr.MimeType)
+		// 15 days
+		w.Header().Set("Cache-control", "public, max-age=1350000")
 		w.Write(cr.Data)
 	}
 }
