@@ -7,19 +7,59 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/akhenakh/gozim"
+	"github.com/rjohnsondev/golibstemmer"
 	"github.com/szferi/gomdb"
 )
 
 var (
 	path       = flag.String("path", "", "path for the zim file")
+	lang       = flag.String("lang", "", "lang of the zim file to index")
+	list       = flag.Bool("list", false, "List available stemming language")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	z          *zim.ZimReader
+	stem       *stemmer.Stemmer
 )
+
+func inList(s []string, value string) bool {
+	for _, v := range s {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
 
 func main() {
 	flag.Parse()
+
+	if *list {
+		list := stemmer.GetSupportedLanguages()
+		for _, lang := range list {
+			fmt.Println(lang)
+		}
+		os.Exit(0)
+	}
+
+	if *lang == "" {
+		fmt.Println("no lang provided no stemming, could result in accurate indexes")
+	} else {
+		list := stemmer.GetSupportedLanguages()
+		if !inList(list, *lang) {
+			fmt.Println("Unsupported language")
+			os.Exit(1)
+		}
+
+		stem, err := stemmer.NewStemmer(*lang)
+		defer stem.Close()
+		if err != nil {
+			fmt.Println("Error creating stemmer: " + err.Error())
+			os.Exit(1)
+		}
+	}
+
 	if *path == "" {
 		panic(errors.New("provide a zim file path"))
 	}
@@ -56,9 +96,14 @@ func main() {
 	i := 0
 
 	txn, _ = env.BeginTxn(nil, 0)
-	for a := range z.ListArticles() {
+	for idx := range z.ListTitles() {
+		offset := z.GetURLOffsetAtIdx(idx)
+		a := z.GetArticleAt(offset)
+
+		slices := strings.Fields(a.Title)
+		_ = len(slices)
 		buf := new(bytes.Buffer)
-		err := binary.Write(buf, binary.LittleEndian, a.URLPtr)
+		err := binary.Write(buf, binary.LittleEndian, idx)
 		if err != nil {
 			fmt.Println("binary.Write failed:", err)
 		}

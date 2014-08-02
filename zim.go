@@ -101,12 +101,35 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 		var start uint32 = 1
 
 		for idx = start; idx < z.ArticleCount; idx++ {
-			offset := z.getURLOffsetAtIdx(idx)
+			offset := z.GetURLOffsetAtIdx(idx)
 			art := z.GetArticleAt(offset)
 			if art == nil {
 				//TODO: deal with redirect continue
 			}
 			ch <- art
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+// list all Titles by position contained in a zim file
+// Titles are pointers to directories, usefull for indexing cause smaller to store uint32
+func (z *ZimReader) ListTitles() <-chan uint32 {
+	ch := make(chan uint32, 10)
+
+	go func() {
+		var pos uint64
+		var count uint32
+
+		for pos = z.titlePtrPos; count < z.ArticleCount; pos += 4 {
+			idx, err := readInt32(z.getBytesRangeAt(pos, pos+4))
+			if err != nil {
+				panic(err)
+			}
+
+			ch <- idx
+			count++
 		}
 		close(ch)
 	}()
@@ -124,7 +147,7 @@ func (z *ZimReader) GetPageNoIndex(url string) *Article {
 	for {
 		pos := (start + stop) / 2
 
-		offset := z.getURLOffsetAtIdx(pos)
+		offset := z.GetURLOffsetAtIdx(pos)
 
 		art = z.FillArticleAt(art, offset)
 		if art.FullURL() == url {
@@ -149,7 +172,7 @@ func (z *ZimReader) GetMainPage() *Article {
 	if z.mainPage == 0xffffffff {
 		return nil
 	}
-	return z.GetArticleAt(z.getURLOffsetAtIdx(z.mainPage))
+	return z.GetArticleAt(z.GetURLOffsetAtIdx(z.mainPage))
 }
 
 // Close & cleanup the zimreader
@@ -268,7 +291,7 @@ func (z *ZimReader) readFileHeaders() error {
 }
 
 // get the offset in the zim pointing to URL at index pos
-func (z *ZimReader) getURLOffsetAtIdx(idx uint32) uint64 {
+func (z *ZimReader) GetURLOffsetAtIdx(idx uint32) uint64 {
 	offset := z.urlPtrPos + uint64(idx)*8
 	v, err := readInt64(z.getBytesRangeAt(offset, offset+8))
 	if err != nil {
