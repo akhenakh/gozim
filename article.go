@@ -62,9 +62,9 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	// Redirect
 	if mimeIdx == RedirectEntry {
 		// check for a possible loop: the redirect could point to the same target
-		if z.GetURLOffsetAtIdx(a.cluster) != offset {
+		if z.GetOffsetAtURLIdx(a.cluster) != offset {
 			// redirect ptr share the same memory offset than Cluster number
-			a.RedirectTo = z.GetArticleAt(z.GetURLOffsetAtIdx(a.cluster))
+			a.RedirectTo = z.GetArticleAt(z.GetOffsetAtURLIdx(a.cluster))
 		}
 
 		// assume the url + title won't be longer than 2k
@@ -103,14 +103,6 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 // get the article (Directory) pointed by the offset found in URLpos or Titlepos
 func (z *ZimReader) GetArticleAt(offset uint64) *Article {
 	a := new(Article)
-	z.FillArticleAt(a, offset)
-	return a
-}
-
-// get the article at idx
-func (z *ZimReader) GetArticleAtIdx(idx uint32) *Article {
-	a := new(Article)
-	offset := z.urlPtrPos + uint64(idx)*8
 	z.FillArticleAt(a, offset)
 	return a
 }

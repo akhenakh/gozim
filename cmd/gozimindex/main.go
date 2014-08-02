@@ -96,9 +96,10 @@ func main() {
 	i := 0
 
 	txn, _ = env.BeginTxn(nil, 0)
-	for idx := range z.ListTitles() {
-		offset := z.GetURLOffsetAtIdx(idx)
+	for idx := range z.ListTitlesPtr() {
+		offset := z.GetOffsetAtURLIdx(idx)
 		a := z.GetArticleAt(offset)
+		fmt.Println(a)
 
 		slices := strings.Fields(a.Title)
 		_ = len(slices)

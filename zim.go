@@ -89,9 +89,9 @@ func (z *ZimReader) MimeTypes() []string {
 	return s
 }
 
-// list all urls contained in a zim file
+// list all articles, using url index, contained in a zim file
 // note that this is a slow implementation, a real iterator is faster
-// but you are not suppose to use this method on big zim files, use indexes
+// you are not suppose to use this method on big zim files, use indexes
 func (z *ZimReader) ListArticles() <-chan *Article {
 	ch := make(chan *Article, 10)
 
@@ -101,7 +101,7 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 		var start uint32 = 1
 
 		for idx = start; idx < z.ArticleCount; idx++ {
-			offset := z.GetURLOffsetAtIdx(idx)
+			offset := z.GetOffsetAtURLIdx(idx)
 			art := z.GetArticleAt(offset)
 			if art == nil {
 				//TODO: deal with redirect continue
@@ -113,9 +113,9 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 	return ch
 }
 
-// list all Titles by position contained in a zim file
-// Titles are pointers to directories, usefull for indexing cause smaller to store uint32
-func (z *ZimReader) ListTitles() <-chan uint32 {
+// list all title pointer, Titles by position contained in a zim file
+// Titles are pointers to URLpos index, usefull for indexing cause smaller to store: uint32
+func (z *ZimReader) ListTitlesPtr() <-chan uint32 {
 	ch := make(chan uint32, 10)
 
 	go func() {
@@ -136,7 +136,7 @@ func (z *ZimReader) ListTitles() <-chan uint32 {
 	return ch
 }
 
-// return the article at the exact url not using any index this is really slow on big ZIM
+// return the article at the exact url not using any index
 func (z *ZimReader) GetPageNoIndex(url string) *Article {
 	// starting at 1 to avoid "con" entry
 	var start uint32 = 0
@@ -147,7 +147,7 @@ func (z *ZimReader) GetPageNoIndex(url string) *Article {
 	for {
 		pos := (start + stop) / 2
 
-		offset := z.GetURLOffsetAtIdx(pos)
+		offset := z.GetOffsetAtURLIdx(pos)
 
 		art = z.FillArticleAt(art, offset)
 		if art.FullURL() == url {
@@ -172,7 +172,17 @@ func (z *ZimReader) GetMainPage() *Article {
 	if z.mainPage == 0xffffffff {
 		return nil
 	}
-	return z.GetArticleAt(z.GetURLOffsetAtIdx(z.mainPage))
+	return z.GetArticleAt(z.GetOffsetAtURLIdx(z.mainPage))
+}
+
+// get the offset pointing to Article at pos in the URL idx
+func (z *ZimReader) GetOffsetAtURLIdx(idx uint32) uint64 {
+	offset := z.urlPtrPos + uint64(idx)*8
+	v, err := readInt64(z.getBytesRangeAt(offset, offset+8))
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 // Close & cleanup the zimreader
@@ -288,16 +298,6 @@ func (z *ZimReader) readFileHeaders() error {
 
 	z.MimeTypes()
 	return err
-}
-
-// get the offset in the zim pointing to URL at index pos
-func (z *ZimReader) GetURLOffsetAtIdx(idx uint32) uint64 {
-	offset := z.urlPtrPos + uint64(idx)*8
-	v, err := readInt64(z.getBytesRangeAt(offset, offset+8))
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
 
 // return data at start and end offsets for cluster idx
