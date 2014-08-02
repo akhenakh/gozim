@@ -74,7 +74,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Path[1:]
 	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
-		fmt.Println(url, "from cache")
 		handleCachedResponse(cr, w, r)
 		return
 
@@ -179,7 +178,7 @@ func main() {
 	// the need for a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
 	// this is less important when using indexes
-	Cache = lru.New(40)
+	Cache = lru.New(60)
 
 	http.ListenAndServe(":8080", nil)
 
