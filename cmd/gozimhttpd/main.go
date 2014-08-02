@@ -95,7 +95,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			a = Z.GetPageNoIndex(url)
 		}
 
-		if a == nil && url == "index.html" {
+		if a == nil && url == "index.html" || url == "" {
 			a = Z.GetMainPage()
 		}
 
