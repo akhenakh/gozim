@@ -72,6 +72,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Path[1:]
 	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
+		fmt.Println(url, "from cache")
 		handleCachedResponse(cr, w, r)
 		return
 
@@ -166,7 +167,7 @@ func main() {
 		dbi, _ = txn.DBIOpen(nil, 0)
 	}
 
-	http.HandleFunc("/", handler)
+	http.HandleFunc("/", makeGzipHandler(handler))
 	z, err := zim.NewReader(*path, *mmap)
 	Z = z
 	if err != nil {
