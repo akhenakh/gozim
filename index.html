@@ -42,12 +42,15 @@ Think Internet outages, boats or countries without permanent Internet access, Go
 
 <p>Thanks to Kiwix organisation, they provide <a href="http://download.kiwix.org/zim/">a full dump of all Wikipedia entries in different languages</a> in a single file (around 40GB for english).<br>
 Gozim is capable of reading that file and serve it via HTTP, even on very small servers.<br>
-With a 25$ 64GB USB key and a 35$ <a href="http://www.raspberrypi.org/">Raspberry Pi</a>, you get enough power to serve multiple users.</p>
+With a 25$ 64GB USB key and a 35$ <a href="http://www.raspberrypi.org/">Raspberry Pi</a>, you get enough power to serve multiple users.<br>
+As it serves regular web pages, it works with any WIFI/HTTP capable clients: <a href="http://one.laptop.org">OLPC</a>, cheap tablets, smartphones...</p>
 
 <h3>
 <a name="why-not-using-the-kiwix-tools-" class="anchor" href="#why-not-using-the-kiwix-tools-"><span class="octicon octicon-link"></span></a>Why not using the Kiwix tools ?</h3>
 
-<p>Kiwix provides a nice graphical client but nothing to be started automatically, it was a way to improve my Go skills too.</p>
+<p>Kiwix goals are different, they provide a nice graphical client to browse ZIM files locally, but a file as big as 40GB does not target cheap PCs/tablets.<br>
+Gozim is a server side tool providing web pages to cheap clients, install it somewhere and forget it.<br>
+It was a way to improve my Go skills too.</p>
 
 <h3>
 <a name="technical-details" class="anchor" href="#technical-details"><span class="octicon octicon-link"></span></a>Technical details</h3>
