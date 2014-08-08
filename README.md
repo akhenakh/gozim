@@ -1,7 +1,7 @@
 gozim
 =====
 
-A Go native implementation for ZIM files.  
+A Go native implementation for ZIM files. See http://akhenakh.github.io/gozim  
 
 ZIM files are used mainly as offline wikipedia copies.
 
