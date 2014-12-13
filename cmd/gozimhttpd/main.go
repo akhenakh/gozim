@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,8 +10,8 @@ import (
 	"runtime/pprof"
 
 	"github.com/akhenakh/gozim"
+	"github.com/blevesearch/bleve"
 	"github.com/golang/groupcache/lru"
-	"github.com/szferi/gomdb"
 )
 
 //
@@ -33,14 +31,14 @@ type CachedResponse struct {
 
 var (
 	path       = flag.String("path", "", "path for the zim file")
+	indexPath  = flag.String("indexPath", "", "path for the index file")
 	mmap       = flag.Bool("mmap", false, "use mmap")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 	Z     *zim.ZimReader
 	Cache *lru.Cache
 	idx   bool
-	env   *mdb.Env
-	dbi   mdb.DBI
+	index bleve.Index
 )
 
 func cacheLookup(url string) (*CachedResponse, bool) {
@@ -79,21 +77,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		var a *zim.Article
-		if idx {
-			txn, _ := env.BeginTxn(nil, mdb.RDONLY)
-			defer txn.Abort()
-			b, _ := txn.Get(dbi, []byte(url))
-			if len(b) != 0 {
-				var v uint64
-				buf := bytes.NewBuffer(b)
-				err := binary.Read(buf, binary.LittleEndian, &v)
-				if err == nil {
-					a = Z.GetArticleAt(v)
-				}
-			}
-		} else {
-			a = Z.GetPageNoIndex(url)
-		}
+		a = Z.GetPageNoIndex(url)
 
 		if a == nil && url == "index.html" || url == "" {
 			a = Z.GetMainPage()
@@ -149,23 +133,15 @@ func main() {
 	}
 
 	// Do we have an index ?
-	pathidx := *path + "idx"
-	if _, err := os.Stat(pathidx); err == nil {
+	if _, err := os.Stat(*indexPath); err == nil {
 		fmt.Println("Found indexes")
 		idx = true
 
 		// open the db
-		env, err = mdb.NewEnv()
+		index, err = bleve.Open(*indexPath)
 		if err != nil {
 			panic(err)
 		}
-
-		err = env.Open(pathidx, 0, 0664)
-		if err != nil {
-			panic(err)
-		}
-		txn, _ := env.BeginTxn(nil, 0)
-		dbi, _ = txn.DBIOpen(nil, 0)
 	}
 
 	http.HandleFunc("/", makeGzipHandler(handler))
