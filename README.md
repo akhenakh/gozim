@@ -1,4 +1,4 @@
-![Travis](https://travis-ci.org/akhenakh/gozim.svg?branch=master)
+[![Build Status](https://travis-ci.org/akhenakh/gozim.svg?branch=master)](https://travis-ci.org/akhenakh/gozim)
 
 gozim
 =====
