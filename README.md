@@ -1,3 +1,5 @@
+![Travis](https://travis-ci.org/akhenakh/gozim.svg?branch=master)
+
 gozim
 =====
 
