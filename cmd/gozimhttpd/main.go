@@ -84,7 +84,16 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	tplHome.Execute(w, map[string]string{"Path": path.Base(*zimPath), "Count": strconv.Itoa(int(Z.ArticleCount))})
+	var index bool
+	if *indexPath != "" {
+		index = true
+	}
+	d := map[string]interface{}{
+		"Path":      path.Base(*zimPath),
+		"Count":     strconv.Itoa(int(Z.ArticleCount)),
+		"IsIndexed": index,
+	}
+	tplHome.Execute(w, d)
 }
 
 // the handler receiving http request
