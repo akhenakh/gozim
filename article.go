@@ -24,7 +24,7 @@ type Article struct {
 	EntryType  uint16
 	Title      string
 	URLPtr     uint64
-	namespace  byte
+	Namespace  byte
 	url        string
 	blob       uint32
 	cluster    uint32
@@ -58,7 +58,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	}
 
 	s := z.getBytesRangeAt(offset+3, offset+4)
-	a.namespace = s[0]
+	a.Namespace = s[0]
 
 	a.cluster, err = readInt32(z.getBytesRangeAt(offset+8, offset+8+4))
 	if err != nil {
@@ -192,7 +192,7 @@ func (a *Article) MimeType() string {
 
 // return the url prefixed by the namespace
 func (a *Article) FullURL() string {
-	return string(a.namespace) + "/" + a.url
+	return string(a.Namespace) + "/" + a.url
 }
 
 func (a *Article) String() string {
