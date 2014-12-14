@@ -15,7 +15,6 @@ NOT FINISHED YET, API MAY CHANGE
 
 TODO
 ====
-Use a Pool to buffer ?  
 Mmap 1st 2GB on 32 bits  
 Selective Gzip encode response based on content type  
 Search with title stemming  

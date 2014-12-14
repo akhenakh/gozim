@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+	"sync"
 
 	xz "github.com/remyoudompheng/go-liblzma"
 )
@@ -14,6 +15,8 @@ const (
 	LinkTargetEntry        = 0xfffe
 	DeletedEntry           = 0xfffd
 )
+
+var articlePool sync.Pool
 
 type Article struct {
 	// EntryType is a RedirectEntry/LinkTargetEntry/DeletedEntry or an idx
@@ -27,6 +30,14 @@ type Article struct {
 	cluster    uint32
 	RedirectTo *Article
 	z          *ZimReader
+}
+
+func init() {
+	articlePool = sync.Pool{
+		New: func() interface{} {
+			return new(Article)
+		},
+	}
 }
 
 // Fill an article with datas found at offset
@@ -102,7 +113,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 
 // get the article (Directory) pointed by the offset found in URLpos or Titlepos
 func (z *ZimReader) GetArticleAt(offset uint64) *Article {
-	a := new(Article)
+	a := articlePool.Get().(*Article)
 	z.FillArticleAt(a, offset)
 	return a
 }
