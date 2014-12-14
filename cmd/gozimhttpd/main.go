@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"runtime/pprof"
+	"strconv"
 
 	"github.com/GeertJohan/go.rice"
 	"github.com/akhenakh/gozim"
@@ -33,7 +35,7 @@ type CachedResponse struct {
 }
 
 var (
-	path       = flag.String("path", "", "path for the zim file")
+	zimPath    = flag.String("path", "", "path for the zim file")
 	indexPath  = flag.String("indexPath", "", "path for the index file")
 	mmap       = flag.Bool("mmap", false, "use mmap")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
@@ -82,7 +84,7 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	tplHome.Execute(w, map[string]string{"Path": *path})
+	tplHome.Execute(w, map[string]string{"Path": path.Base(*zimPath), "Count": strconv.Itoa(int(Z.ArticleCount))})
 }
 
 // the handler receiving http request
@@ -125,7 +127,7 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	flag.Parse()
-	if *path == "" {
+	if *zimPath == "" {
 		panic(errors.New("provide a zim file path"))
 	}
 
@@ -170,7 +172,7 @@ func main() {
 
 	// crompress wiki pages
 	http.HandleFunc("/zim", makeGzipHandler(zimHandler))
-	z, err := zim.NewReader(*path, *mmap)
+	z, err := zim.NewReader(*zimPath, *mmap)
 	Z = z
 	if err != nil {
 		panic(err)

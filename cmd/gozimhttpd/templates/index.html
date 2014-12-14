@@ -52,7 +52,7 @@
 
       <div class="jumbotron">
         <h1>Welcome to Gozim</h1>
-        <p>This server is currently serving the file {{ .Path }}.</p>
+        <p>This server is currently serving the file {{ .Path }}.<br>It contains {{ .Count }} articles.</p>
         {{if .IsIndexed}}
         {{else}}
         <p>This zim file is not indexed you can't perform a word lookup.<br>Ask the server adminstrator to use the gozimindex command</p>
