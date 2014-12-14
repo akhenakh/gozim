@@ -57,6 +57,10 @@
         {{else}}
         <p>This zim file is not indexed you can't perform a word lookup.<br>Ask the server adminstrator to use the gozimindex command</p>
         {{end}}
+        {{if .HasMainPage}}
+        <p>The main page is <a href={{ .MainURL }}>here</a></p>
+        {{end}}
+        
 
       </div>
 

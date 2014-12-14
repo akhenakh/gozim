@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -69,13 +68,13 @@ func cacheLookup(url string) (*CachedResponse, bool) {
 // dealing with cached response, responding directly
 func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Request) {
 	if cr.ResponseType == RedirectResponse {
-		fmt.Printf("302 from %s to %s\n", r.URL.Path, string(cr.Data))
-		http.Redirect(w, r, "/"+string(cr.Data), http.StatusFound)
+		log.Printf("302 from %s to %s\n", r.URL.Path, "zim/"+string(cr.Data))
+		http.Redirect(w, r, "/zim/"+string(cr.Data), http.StatusFound)
 	} else if cr.ResponseType == NoResponse {
-		fmt.Printf("404 %s\n", r.URL.Path)
+		log.Printf("404 %s\n", r.URL.Path)
 		http.NotFound(w, r)
 	} else if cr.ResponseType == DataResponse {
-		fmt.Printf("200 %s\n", r.URL.Path)
+		log.Printf("200 %s\n", r.URL.Path)
 		w.Header().Set("Content-Type", cr.MimeType)
 		// 15 days
 		w.Header().Set("Cache-control", "public, max-age=1350000")
@@ -88,18 +87,29 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	if *indexPath != "" {
 		index = true
 	}
+	var mainURL string
+
+	mainPage := Z.GetMainPage()
+	var hasMainPage bool
+
+	if mainPage != nil {
+		hasMainPage = true
+		mainURL = "/zim/" + mainPage.FullURL()
+	}
+
 	d := map[string]interface{}{
-		"Path":      path.Base(*zimPath),
-		"Count":     strconv.Itoa(int(Z.ArticleCount)),
-		"IsIndexed": index,
+		"Path":        path.Base(*zimPath),
+		"Count":       strconv.Itoa(int(Z.ArticleCount)),
+		"IsIndexed":   index,
+		"HasMainPage": hasMainPage,
+		"MainURL":     mainURL,
 	}
 	tplHome.Execute(w, d)
 }
 
 // the handler receiving http request
 func zimHandler(w http.ResponseWriter, r *http.Request) {
-
-	url := r.URL.Path[1:]
+	url := r.URL.Path[5:]
 	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
 		handleCachedResponse(cr, w, r)
@@ -108,10 +118,6 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		var a *zim.Article
 		a = Z.GetPageNoIndex(url)
-
-		if a == nil && url == "index.html" || url == "" {
-			a = Z.GetMainPage()
-		}
 
 		if a == nil {
 			Cache.Add(url, CachedResponse{ResponseType: NoResponse})
@@ -141,7 +147,7 @@ func main() {
 	}
 
 	if *mmap {
-		fmt.Println("Using mmap")
+		log.Println("Using mmap")
 	}
 
 	if *cpuprofile != "" {
@@ -164,7 +170,7 @@ func main() {
 
 	// Do we have an index ?
 	if _, err := os.Stat(*indexPath); err == nil {
-		fmt.Println("Found indexes")
+		log.Println("Found indexes")
 		idx = true
 
 		// open the db
@@ -180,7 +186,7 @@ func main() {
 	http.Handle("/static/", fileServer)
 
 	// crompress wiki pages
-	http.HandleFunc("/zim", makeGzipHandler(zimHandler))
+	http.HandleFunc("/zim/", makeGzipHandler(zimHandler))
 	z, err := zim.NewReader(*zimPath, *mmap)
 	Z = z
 	if err != nil {
@@ -193,7 +199,7 @@ func main() {
 	// the need for a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
 	// this is less important when using indexes
-	Cache = lru.New(60)
+	Cache = lru.New(100)
 
 	http.ListenAndServe(":8080", nil)
 
