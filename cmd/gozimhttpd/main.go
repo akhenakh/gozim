@@ -4,11 +4,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 
+	"github.com/GeertJohan/go.rice"
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
 	"github.com/golang/groupcache/lru"
@@ -39,7 +42,19 @@ var (
 	Cache *lru.Cache
 	idx   bool
 	index bleve.Index
+
+	tplHome *template.Template
 )
+
+func init() {
+	tplBox := rice.MustFindBox("templates")
+
+	tplString, err := tplBox.String("index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	tplHome = template.Must(template.New("Home").Parse(tplString))
+}
 
 func cacheLookup(url string) (*CachedResponse, bool) {
 	if v, ok := Cache.Get(url); ok {
@@ -66,8 +81,12 @@ func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Req
 	}
 }
 
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	tplHome.Execute(w, map[string]string{"Path": *path})
+}
+
 // the handler receiving http request
-func handler(w http.ResponseWriter, r *http.Request) {
+func zimHandler(w http.ResponseWriter, r *http.Request) {
 
 	url := r.URL.Path[1:]
 	// lookup in the cache for a cached response
@@ -144,12 +163,21 @@ func main() {
 		}
 	}
 
-	http.HandleFunc("/", makeGzipHandler(handler))
+	// assets
+	box := rice.MustFindBox("static")
+	fileServer := http.StripPrefix("/static/", http.FileServer(box.HTTPBox()))
+	http.Handle("/static/", fileServer)
+
+	// crompress wiki pages
+	http.HandleFunc("/zim", makeGzipHandler(zimHandler))
 	z, err := zim.NewReader(*path, *mmap)
 	Z = z
 	if err != nil {
 		panic(err)
 	}
+
+	// home
+	http.HandleFunc("/", makeGzipHandler(homeHandler))
 
 	// the need for a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
