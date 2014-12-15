@@ -16,9 +16,24 @@ Wikipedia/Wikinews/... ZIMs can be downloaded from there http://download.kiwix.o
 build and installation
 ======================
 For the indexer bleve to work properly it's recommended that you use leveldb as storage.
-	go get -u -v -tags leveldb  github.com/blevesearch/bleve/...
+Note that you need to install libleveldb as a dependency on your system
+```
+go get -u -v -tags leveldb  github.com/blevesearch/bleve/...
+```
 
-Note that you need to install libleveldb as a dependency 
+Gozim http server is using go.rice to embed html/css in the binary install the rice command
+```
+go install github.com/GeertJohan/go.rice/rice
+```
+
+After a go build run:
+```
+rice append --exec gozimhttpd
+```
+
+On Ubuntu/Debian youn need to apt-get install liblzma-dev.
+
+
 TODO
 ====
 Mmap 1st 2GB on 32 bits  
