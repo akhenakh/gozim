@@ -56,9 +56,10 @@ It was a way to improve my Go skills too.</p>
 <a name="technical-details" class="anchor" href="#technical-details"><span class="octicon octicon-link"></span></a>Technical details</h3>
 
 <ul>
-<li>Download non indexed ZIM files (Gozim is using his own index system)</li>
-<li>Start the web server with
-<code>gozimhttpd -path yourzimfile.zim</code> and launch a browser to http://yourip:8080</li>
+<li>Download non indexed ZIM files (Gozim is using its own index system)</li>
+<li>Create the optional index <code>gozimindex -path=yourzimfile.zim -indexPath=yourzimfile.idx</code> this gives you a full text search on the article's titles</li>
+<li>Start the web server as follow
+<code>gozimhttpd -path=yourzimfile.zim -index=yourzimfile.idx</code> and launch your browser to http://yourip:8080</li>
 <li>See <a href="http://github.com/akhenakh/gozim">Gozim Github</a>
 </li>
 </ul>
