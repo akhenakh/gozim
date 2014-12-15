@@ -127,10 +127,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sr.Total > 0 {
-		d["Info"] = fmt.Sprintf("%d matches, took %s", sr.Total, sr.Took)
+		d["Info"] = fmt.Sprintf("%d matches for query [%s], took %s", sr.Total, q, sr.Took)
 		d["Hits"] = sr.Hits
 	} else {
-		d["Info"] = fmt.Sprintf("No match for %s, took %s", q, sr.Took)
+		d["Info"] = fmt.Sprintf("No match for [%s], took %s", q, sr.Took)
 		d["Hits"] = 0
 	}
 
