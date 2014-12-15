@@ -1,12 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"path"
 	"strconv"
 
 	"github.com/akhenakh/gozim"
+	"github.com/blevesearch/bleve"
 )
 
 const (
@@ -25,7 +27,7 @@ func cacheLookup(url string) (*CachedResponse, bool) {
 func handleCachedResponse(cr *CachedResponse, w http.ResponseWriter, r *http.Request) {
 	if cr.ResponseType == RedirectResponse {
 		log.Printf("302 from %s to %s\n", r.URL.Path, "zim/"+string(cr.Data))
-		http.Redirect(w, r, "/zim/"+string(cr.Data), http.StatusFound)
+		http.Redirect(w, r, "/zim/"+string(cr.Data), http.StatusMovedPermanently)
 	} else if cr.ResponseType == NoResponse {
 		log.Printf("404 %s\n", r.URL.Path)
 		http.NotFound(w, r)
@@ -72,10 +74,6 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	var index bool
-	if *indexPath != "" {
-		index = true
-	}
 	var mainURL string
 
 	mainPage := Z.GetMainPage()
@@ -89,11 +87,71 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	d := map[string]interface{}{
 		"Path":        path.Base(*zimPath),
 		"Count":       strconv.Itoa(int(Z.ArticleCount)),
-		"IsIndexed":   index,
+		"IsIndexed":   idx,
 		"HasMainPage": hasMainPage,
 		"MainURL":     mainURL,
 	}
-	tplHome.Execute(w, d)
+	templates["index"].Execute(w, d)
+}
+
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	d := map[string]interface{}{
+		"Path": path.Base(*zimPath),
+	}
+
+	if !idx {
+		templates["searchNoIdx"].Execute(w, d)
+		return
+	}
+
+	if r.Method == "GET" {
+		templates["search"].Execute(w, d)
+		return
+	}
+
+	q := r.FormValue("search_data")
+	if q == "" {
+		templates["search"].Execute(w, d)
+		return
+	}
+
+	query := bleve.NewMatchQuery(q)
+	search := bleve.NewSearchRequest(query)
+	search.Fields = []string{"Index"}
+	search.Highlight = bleve.NewHighlight()
+
+	sr, err := index.Search(search)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	if sr.Total > 0 {
+		d["Info"] = fmt.Sprintf("%d matches, took %s", sr.Total, sr.Took)
+		d["Hits"] = sr.Hits
+	} else {
+		d["Info"] = fmt.Sprintf("No match for %s, took %s", q, sr.Took)
+		d["Hits"] = 0
+	}
+
+	templates["searchResult"].Execute(w, d)
+}
+
+func articleHandler(w http.ResponseWriter, r *http.Request) {
+	var idx int
+	iq := r.URL.Query().Get("index")
+	if iq != "" {
+		idx, _ = strconv.Atoi(iq)
+	}
+
+	offset := Z.GetOffsetAtURLIdx(uint32(idx))
+	a := Z.GetArticleAt(offset)
+
+	if a == nil {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, "/zim/"+a.FullURL(), http.StatusMovedPermanently)
 }
 
 func browseHandler(w http.ResponseWriter, r *http.Request) {
@@ -139,5 +197,5 @@ func browseHandler(w http.ResponseWriter, r *http.Request) {
 		"NextPage":     nextPage,
 		"Articles":     Articles,
 	}
-	tplBrowse.Execute(w, d)
+	templates["browse"].Execute(w, d)
 }

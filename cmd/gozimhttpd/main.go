@@ -16,7 +16,6 @@ import (
 	"github.com/golang/groupcache/lru"
 )
 
-//
 type ResponseType int8
 
 const (
@@ -25,6 +24,7 @@ const (
 	NoResponse
 )
 
+// CachedResponse cache the answer to an URL in the zim
 type CachedResponse struct {
 	ResponseType ResponseType
 	Data         []byte
@@ -33,33 +33,38 @@ type CachedResponse struct {
 
 var (
 	zimPath    = flag.String("path", "", "path for the zim file")
-	indexPath  = flag.String("indexPath", "", "path for the index file")
+	indexPath  = flag.String("index", "", "path for the index file")
 	mmap       = flag.Bool("mmap", false, "use mmap")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
-	Z     *zim.ZimReader
+	Z *zim.ZimReader
+	// Cache is filled with CachedResponse to avoid hitting the zim file for a zim URL
 	Cache *lru.Cache
 	idx   bool
 	index bleve.Index
 
-	tplHome   *template.Template
-	tplBrowse *template.Template
+	templates map[string]*template.Template
 )
 
 func init() {
+	templates = make(map[string]*template.Template)
+
 	tplBox := rice.MustFindBox("templates")
 
-	homeString, err := tplBox.String("index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	tplHome = template.Must(template.New("Home").Parse(homeString))
+	registerTemplate("index", tplBox)
+	registerTemplate("browse", tplBox)
+	registerTemplate("search", tplBox)
+	registerTemplate("searchNoIdx", tplBox)
+	registerTemplate("searchResult", tplBox)
+}
 
-	browseString, err := tplBox.String("browse.html")
+// registerTemplate load template from rice box and add them to a map[string] call templates
+func registerTemplate(name string, tplBox *rice.Box) {
+	tplString, err := tplBox.String(name + ".html")
 	if err != nil {
 		log.Fatal(err)
 	}
-	tplBrowse = template.Must(template.New("Browse").Parse(browseString))
+	templates[name] = template.Must(template.New(name).Parse(tplString))
 }
 
 func main() {
@@ -116,6 +121,8 @@ func main() {
 	}
 
 	// tpl
+	http.HandleFunc("/search/", makeGzipHandler(searchHandler))
+	http.HandleFunc("/article/", articleHandler)
 	http.HandleFunc("/browse/", makeGzipHandler(browseHandler))
 	http.HandleFunc("/", makeGzipHandler(homeHandler))
 

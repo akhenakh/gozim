@@ -8,7 +8,7 @@
     <meta name="author" content="">
     <link rel="icon" href="../../favicon.ico">
 
-    <title>Gozim Homepage for {{ .Path }} </title>
+    <title>Gozim Browswing {{ .Path }}</title>
 
     <!-- Bootstrap core CSS -->
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
@@ -34,9 +34,9 @@
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="/">Home</a></li>
+            <li><a href="/">Home</a></li>
             <li><a href="/browse/">Browse</a></li>
-            <li><a href="/search">Search</a></li>
+            <li class="active"><a href="/search/">Search</a></li>
             <li><a href="/about/">About</a></li>
 
           </ul>
@@ -50,26 +50,32 @@
 
     <div class="container">
 
-      <div class="jumbotron">
-        <h1>Welcome to Gozim</h1>
-        <p>This server is currently serving the file {{ .Path }}.<br>It contains {{ .Count }} articles.</p>
-        {{if .IsIndexed}}
-        {{else}}
-        <p>This zim file is <strong>not indexed</strong> you can't perform a word lookup.<br>Ask the server adminstrator to use the gozimindex command</p>
-        {{end}}
-        {{if .HasMainPage}}
-        <p>The main page is <a href={{ .MainURL }}>here</a></p>
-        {{end}}
-      </div>
+		<div class="jumbotron">
+			<h2>Search Terms Examples</h2>
+			<p>Terms: <code>water</code><br>Phrase: <code>"light beer"</code><br>Required and exclusion: <code>+water -light beer</code> will perform a Query that MUST match the term water, MUST NOT match for the term light in the default field, and SHOULD match t the term beer.</p>
+		</div>
+
+		<div class="row">
+  			<div class="span9">
+				<form role="form" method="POST" action="/search/">
+					<div class="form-group">
+				    	<input type="text" class="form-control"  name="search_data" id="search_data" placeholder="Type your search query">
+				  	</div>
+				 	<button type="submit" class="btn btn-default">Submit</button>
+				 </form>
+				</p>
+         	</div>
+  		</div>
 
     </div> <!-- /container -->
 
-    <div id="footer">
-      <div class="container">
-        <p class="muted credit">Gozim</p>
-      </div>
-    </div>
 
+	<hr>
+	<div id="footer">
+		<div class="container">
+			<p class="muted credit">Powered by Gozim</p>
+		</div>
+	</div>
 
   </body>
 </html>

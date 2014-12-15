@@ -10,8 +10,8 @@ import (
 )
 
 type ArticleIndex struct {
-	Title  string
-	Offset uint64
+	Title string
+	Index string
 }
 
 var (
@@ -60,9 +60,9 @@ func main() {
 
 	articleMapping := bleve.NewDocumentMapping()
 
-	offsetFieldMapping := bleve.NewNumericFieldMapping()
+	offsetFieldMapping := bleve.NewTextFieldMapping()
 	offsetFieldMapping.Index = false
-	articleMapping.AddFieldMappingsAt("Offset", offsetFieldMapping)
+	articleMapping.AddFieldMappingsAt("Index", offsetFieldMapping)
 
 	titleMapping := bleve.NewTextFieldMapping()
 	titleMapping.Analyzer = *lang
@@ -91,7 +91,7 @@ func main() {
 		}
 		if a.Namespace == 'A' {
 			idoc.Title = a.Title
-			idoc.Offset = offset
+			idoc.Index = fmt.Sprint(idx)
 			index.Index(idoc.Title, idoc)
 		}
 

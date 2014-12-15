@@ -13,6 +13,12 @@ Wikipedia/Wikinews/... ZIMs can be downloaded from there http://download.kiwix.o
 
 ![ScreenShot](/shots/browse.jpg)
 
+build and installation
+======================
+For the indexer bleve to work properly it's recommended that you use leveldb as storage.
+	go get -u -v -tags leveldb  github.com/blevesearch/bleve/...
+
+Note that you need to install libleveldb as a dependency 
 TODO
 ====
 Mmap 1st 2GB on 32 bits  
