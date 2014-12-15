@@ -9,6 +9,10 @@ import (
 	"github.com/akhenakh/gozim"
 )
 
+const (
+	ArticlesPerPage = 16
+)
+
 func cacheLookup(url string) (*CachedResponse, bool) {
 	if v, ok := Cache.Get(url); ok {
 		c := v.(CachedResponse)
@@ -93,16 +97,47 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func browseHandler(w http.ResponseWriter, r *http.Request) {
-	Articles := make([]*zim.Article, 20)
+	var page, previousPage, nextPage int
+
+	p := r.URL.Query().Get("page")
+	if p != "" {
+		page, _ = strconv.Atoi(p)
+	}
+
+	if page*ArticlesPerPage-1 >= int(Z.ArticleCount) {
+		http.NotFound(w, r)
+		return
+	}
+
+	Articles := make([]*zim.Article, ArticlesPerPage)
 	var pos int
-	for i := 100; i < 120; i++ {
+	for i := page * ArticlesPerPage; i < page*ArticlesPerPage+ArticlesPerPage; i++ {
 		offset := Z.GetOffsetAtURLIdx(uint32(i))
-		Articles[pos] = Z.GetArticleAt(offset)
+		a := Z.GetArticleAt(offset)
+		if a.Title == "" {
+			a.Title = a.FullURL()
+		}
+		Articles[pos] = a
 		pos++
 	}
+
+	if page == 0 {
+		previousPage = 0
+	} else {
+		previousPage = page - 1
+	}
+
+	if page*ArticlesPerPage-1 >= int(Z.ArticleCount) {
+		nextPage = page
+	} else {
+		nextPage = page + 1
+	}
+
 	d := map[string]interface{}{
-		"Page":     0,
-		"Articles": Articles,
+		"Page":         page,
+		"PreviousPage": previousPage,
+		"NextPage":     nextPage,
+		"Articles":     Articles,
 	}
 	tplBrowse.Execute(w, d)
 }
