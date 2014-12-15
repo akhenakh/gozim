@@ -12,7 +12,7 @@ See http://openzim.org/wiki/ZIM_file_format and http://openzim.org/wiki/ZIM_File
 Wikipedia/Wikinews/... ZIMs can be downloaded from there http://download.kiwix.org/zim/
 
 ![ScreenShot](/shots/browse.jpg)
-
+![ScreenShot](/shots/search.jpg)
 build and installation
 ======================
 For the indexer bleve to work properly it's recommended that you use leveldb as storage.
@@ -26,7 +26,7 @@ Gozim http server is using go.rice to embed html/css in the binary install the r
 go install github.com/GeertJohan/go.rice/rice
 ```
 
-After a go build run:
+After build gozimhttpd command run to embed the files:
 ```
 rice append --exec gozimhttpd
 ```
