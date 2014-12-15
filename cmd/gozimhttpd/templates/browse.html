@@ -34,9 +34,9 @@
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="/">Home</a></li>
-            <li><a href="/browse/">Browse</a></li>
-            <li><a href="/search">Search</a></li>
+            <li><a href="/">Home</a></li>
+            <li class="active"><a href="/browse/">Browse</a></li>
+            <li><a href="/search/">Search</a></li>
             <li><a href="/about/">About</a></li>
 
           </ul>
@@ -50,20 +50,29 @@
 
     <div class="container">
 
-      <div class="jumbotron">
-        <h1>Welcome to Gozim</h1>
-        <p>This server is currently serving the file {{ .Path }}.<br>It contains {{ .Count }} articles.</p>
-        {{if .IsIndexed}}
-        {{else}}
-        <p>This zim file is not indexed you can't perform a word lookup.<br>Ask the server adminstrator to use the gozimindex command</p>
+      
+      <table class="table table-striped">
+        <thead>
+        <tr>
+          <th>Title</th>
+          <th>Mime type</th>
+        </tr>
+
+        <tbody>
+
+        {{with .Articles}}
+          {{range .}}
+          <tr>
+            <td><a href="/zim/{{ .FullURL }}">{{ .Title }}</a></td>
+            <td>{{ .MimeType }}</td>
+          </tr>
+          {{end}}
         {{end}}
-        {{if .HasMainPage}}
-        <p>The main page is <a href={{ .MainURL }}>here</a></p>
-        {{end}}
 
-
-      </div>
-
+        </tbody>
+      </thead>
+      </table>
+     
     </div> <!-- /container -->
 
   </body>
