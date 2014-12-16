@@ -83,11 +83,11 @@ func main() {
 
 	idoc := ArticleIndex{}
 
-	IntCallbackIterator(func(idx uint32) {
+	z.ListTitlesPtrIterator(func(idx uint32) {
 		offset := z.GetOffsetAtURLIdx(idx)
 		a := z.GetArticleAt(offset)
 		if a.EntryType == zim.RedirectEntry || a.EntryType == zim.LinkTargetEntry || a.EntryType == zim.DeletedEntry {
-			continue
+			return
 		}
 		if a.Namespace == 'A' {
 			idoc.Title = a.Title
