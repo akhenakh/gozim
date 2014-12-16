@@ -115,6 +115,8 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 
 // list all title pointer, Titles by position contained in a zim file
 // Titles are pointers to URLpos index, usefull for indexing cause smaller to store: uint32
+// note that this is a slow implementation, a real iterator is faster
+// you are not suppose to use this method on big zim files prefer ListTitlesPtrIterator to build your index
 func (z *ZimReader) ListTitlesPtr() <-chan uint32 {
 	ch := make(chan uint32, 10)
 
@@ -134,6 +136,21 @@ func (z *ZimReader) ListTitlesPtr() <-chan uint32 {
 		close(ch)
 	}()
 	return ch
+}
+
+// list all title pointer, Titles by position contained in a zim file
+// Titles are pointers to URLpos index, usefull for indexing cause smaller to store: uint32
+func (z *ZimReader) ListTitlesPtrIterator(cb func(uint32)) {
+	var count uint32
+	for pos := z.titlePtrPos; count < z.ArticleCount; pos += 4 {
+		idx, err := readInt32(z.getBytesRangeAt(pos, pos+4))
+		if err != nil {
+			panic(err)
+		}
+
+		cb(idx)
+		count++
+	}
 }
 
 // return the article at the exact url not using any index

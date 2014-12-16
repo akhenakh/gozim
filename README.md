@@ -34,9 +34,9 @@ After build gozimhttpd command run to embed the files:
 rice append --exec gozimhttpd
 ```
 
-On Ubuntu/Debian youn need those packages to compile.
+On Ubuntu/Debian youn need those packages to compile gozim.
 ```
-apt-get install git liblzma-dev mercurial libleveldb-dev
+apt-get install git liblzma-dev mercurial libleveldb-dev build-essential
 ```
 
 

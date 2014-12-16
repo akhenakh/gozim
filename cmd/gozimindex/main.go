@@ -83,7 +83,7 @@ func main() {
 
 	idoc := ArticleIndex{}
 
-	for idx := range z.ListTitlesPtr() {
+	IntCallbackIterator(func(idx uint32) {
 		offset := z.GetOffsetAtURLIdx(idx)
 		a := z.GetArticleAt(offset)
 		if a.EntryType == zim.RedirectEntry || a.EntryType == zim.LinkTargetEntry || a.EntryType == zim.DeletedEntry {
@@ -100,5 +100,5 @@ func main() {
 			fmt.Print("*")
 			i = 0
 		}
-	}
+	})
 }
