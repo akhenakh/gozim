@@ -23,6 +23,9 @@ go get -u -v -tags leveldb  github.com/blevesearch/bleve/...
 
 Gozim http server is using go.rice to embed html/css in the binary install the rice command
 ```
+go get github.com/GeertJohan/go.rice
+go get github.com/GeertJohan/go.rice/rice
+go install github.com/GeertJohan/go.rice
 go install github.com/GeertJohan/go.rice/rice
 ```
 
@@ -31,7 +34,10 @@ After build gozimhttpd command run to embed the files:
 rice append --exec gozimhttpd
 ```
 
-On Ubuntu/Debian youn need to apt-get install liblzma-dev.
+On Ubuntu/Debian youn need those packages to compile.
+```
+apt-get install git liblzma-dev mercurial libleveldb-dev
+```
 
 
 TODO
