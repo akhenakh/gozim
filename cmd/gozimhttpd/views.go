@@ -55,9 +55,15 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 		if a == nil {
 			Cache.Add(url, CachedResponse{ResponseType: NoResponse})
 		} else if a.EntryType == zim.RedirectEntry {
-			Cache.Add(url, CachedResponse{
-				ResponseType: RedirectResponse,
-				Data:         []byte(a.RedirectTo.FullURL())})
+			ridx, err := a.RedirectIndex()
+			if err != nil {
+				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+			} else {
+				ra := Z.GetArticleAt(Z.GetOffsetAtURLIdx(ridx))
+				Cache.Add(url, CachedResponse{
+					ResponseType: RedirectResponse,
+					Data:         []byte(ra.FullURL())})
+			}
 		} else {
 			Cache.Add(url, CachedResponse{
 				ResponseType: DataResponse,

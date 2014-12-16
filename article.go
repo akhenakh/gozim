@@ -2,6 +2,7 @@ package zim
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -21,15 +22,14 @@ var articlePool sync.Pool
 type Article struct {
 	// EntryType is a RedirectEntry/LinkTargetEntry/DeletedEntry or an idx
 	// pointing to ZimReader.mimeTypeList
-	EntryType  uint16
-	Title      string
-	URLPtr     uint64
-	Namespace  byte
-	url        string
-	blob       uint32
-	cluster    uint32
-	RedirectTo *Article
-	z          *ZimReader
+	EntryType uint16
+	Title     string
+	URLPtr    uint64
+	Namespace byte
+	url       string
+	blob      uint32
+	cluster   uint32
+	z         *ZimReader
 }
 
 func init() {
@@ -72,12 +72,6 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 
 	// Redirect
 	if mimeIdx == RedirectEntry {
-		// check for a possible loop: the redirect could point to the same target
-		if z.GetOffsetAtURLIdx(a.cluster) != offset {
-			// redirect ptr share the same memory offset than Cluster number
-			a.RedirectTo = z.GetArticleAt(z.GetOffsetAtURLIdx(a.cluster))
-		}
-
 		// assume the url + title won't be longer than 2k
 		b := bytes.NewBuffer(z.getBytesRangeAt(offset+12, offset+12+2048))
 		a.url, err = b.ReadString('\x00')
@@ -200,6 +194,16 @@ func (a *Article) FullURL() string {
 func (a *Article) String() string {
 	return fmt.Sprintf("Mime: 0x%x URL: [%s], Title: [%s], Cluster: 0x%x Blob: 0x%x",
 		a.EntryType, a.FullURL(), a.Title, a.cluster, a.blob)
+}
+
+// RedirectIndex return the redirect index of RedirectEntry type article
+// return an err if not a redirect entry
+func (a *Article) RedirectIndex() (uint32, error) {
+	if a.EntryType != RedirectEntry {
+		return 0, errors.New("Not a RedirectEntry")
+	}
+	// We use the cluster to save the redirect index position for RedirectEntry type
+	return a.cluster, nil
 }
 
 func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
