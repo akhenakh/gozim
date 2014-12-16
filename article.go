@@ -156,8 +156,10 @@ func (a *Article) Data() []byte {
 		if err != nil {
 			panic(err)
 		}
-
-		return blob[bs:be]
+		// avoid retaining all the chunk
+		c := make([]byte, be-bs)
+		copy(c, blob[bs:be])
+		return c
 
 	} else if compression == 0 || compression == 1 {
 		// un compresssed
