@@ -129,7 +129,7 @@ func main() {
 	// the need for a cache is absolute
 	// a lots of urls will be called repeatedly, css, js ...
 	// this is less important when using indexes
-	Cache = lru.New(100)
+	Cache = lru.New(40)
 
 	http.ListenAndServe(":8080", nil)
 

@@ -144,7 +144,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	templates["searchResult"].Execute(w, d)
 }
 
-// articleHandler is used to disaply article while referred from a search result
+// articleHandler is used to display articles  referred from a search result
+// with the indexed zim position
 func articleHandler(w http.ResponseWriter, r *http.Request) {
 	var idx int
 	iq := r.URL.Query().Get("index")
