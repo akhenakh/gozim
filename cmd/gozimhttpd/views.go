@@ -73,8 +73,15 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// homeHandler is displaying the / page but redirect every other requests to /zim/xxx
+// some zim files have / hardcoded in their pages
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	var mainURL string
+
+	if r.URL.Path != "/" {
+		http.Redirect(w, r, "/zim"+r.URL.Path, http.StatusMovedPermanently)
+		return
+	}
 
 	mainPage := Z.GetMainPage()
 	var hasMainPage bool
@@ -137,6 +144,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	templates["searchResult"].Execute(w, d)
 }
 
+// articleHandler is used to disaply article while referred from a search result
 func articleHandler(w http.ResponseWriter, r *http.Request) {
 	var idx int
 	iq := r.URL.Query().Get("index")
@@ -154,6 +162,7 @@ func articleHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/zim/"+a.FullURL(), http.StatusMovedPermanently)
 }
 
+// browseHandler is browsing the zim page per page
 func browseHandler(w http.ResponseWriter, r *http.Request) {
 	var page, previousPage, nextPage int
 
