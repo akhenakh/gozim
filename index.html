@@ -32,35 +32,35 @@
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
         <h3>
-<a name="about" class="anchor" href="#about"><span class="octicon octicon-link"></span></a>About</h3>
+<a name="about" class="anchor" href="#about"><span class="octicon octicon-link"></span></a>About this project</h3>
 
 <p>Gozim is a library and a toolset to serve a full Wikipedia copy from small computers even your own PC.<br>
 Think Internet outages, boats, campgrounds or countries without permanent Internet access, Gozim allows a classroom to work on Wikipedia from anywhere no internet needed.</p>
 
         <h3>
-<a name="try-it" class="anchor" href="#try-it"><span class="octicon octicon-link"></span></a>Try it for yourself</h3>
+<a name="try-it" class="anchor" href="#try-it"><span class="octicon octicon-link"></span></a>Give it a try!</h3>
 
-<p><a href="http://lecaire.nobugware.com:8080/">Click here to try it !!</a> <br><a href="http://lecaire.nobugware.com:8080/">This instance</a> is running a full Wikipedia copy, it's running on the smallest server Google compute engine provides: a f1-micro running FreeBSD and gozimhttpd, 8$ per month.</p>
+<p><a href="http://lecaire.nobugware.com:8080/">Click here to give it a try</a> <br><a href="http://lecaire.nobugware.com:8080/">The instance</a> runs a full Wikipedia copy, Google smallest compute engine server: a f1-micro running FreeBSD and gozimhttpd.</p>
 
 
 <h3>
 <a name="how-does-it-work-" class="anchor" href="#how-does-it-work-"><span class="octicon octicon-link"></span></a>How does it work ?</h3>
 
-<p>Thanks to the Kiwix organisation, they provide <a href="http://download.kiwix.org/zim/">a full dump of all Wikipedia entries in different languages</a> in a single file (around 40GB for english).<br>
+<p>Thanks to the Kiwix, they provide <a href="http://download.kiwix.org/zim/">a full dump of all Wikipedia entries in different languages</a> is provided in a single file.<br>Around 40GB for the entire English version of Wikipedia.<br>
 Gozim is capable of reading that file and serve it via HTTP, even on very small servers (<a href="http://www.raspberrypi.org/">Raspberry Pi</a>).<br>
-With a 25$ 64GB USB key and a 35$ <a href="http://www.raspberrypi.org/">Raspberry Pi</a>, you get enough power to serve multiple users.<br>
+With a 25$ 64GB USB key and a 35$ <a href="http://www.raspberrypi.org/">Raspberry Pi</a>, you have enough power to serve multiple users at once.<br>
 As it serves regular web pages, it works with any WIFI/HTTP capable clients: <a href="http://one.laptop.org">OLPC</a>, cheap tablets, smartphones...</p>
 
 <h3>
-<a name="why-not-using-the-kiwix-tools-" class="anchor" href="#why-not-using-the-kiwix-tools-"><span class="octicon octicon-link"></span></a>Why not using the Kiwix tools ?</h3>
+<a name="why-not-using-the-kiwix-tools-" class="anchor" href="#why-not-using-the-kiwix-tools-"><span class="octicon octicon-link"></span></a>Why not use the tools provided by Kiwix?</h3>
 
-<p>Kiwix goals are different, they provide a nice graphical client to browse ZIM files locally, but a file as big as 40GB does not target cheap PCs/tablets.<br>
-Gozim is a server side tool providing web pages to cheap clients, install it somewhere and forget it.<br>
-It was a way to improve my Go skills too.</p>
+<p>Kiwix's goals are different. They provide a nice visual client to browse ZIM files locally. Yet for a file as big as 40GB, it does not target cost-friendly PCs / tablets<br>
+Gozim is a server side tool providing web pages to cheap clients, install it somewhere and forget it.</p>
 
 <h3>
 <a name="technical-details" class="anchor" href="#technical-details"><span class="octicon octicon-link"></span></a>Technical details</h3>
 
+<p>It's written in Go language and the indexer is using Bleve</p>
 <ul>
 <li>Download non indexed ZIM files (Gozim is using its own index system)</li>
 <li>Create the optional index <code>gozimindex -path=yourzimfile.zim -indexPath=yourzimfile.idx</code> this gives you a full text search on the article's titles</li>
