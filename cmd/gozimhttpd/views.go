@@ -215,3 +215,7 @@ func browseHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	templates["browse"].Execute(w, d)
 }
+
+func robotHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "User-agent: *\nDisallow: /\n")
+}
