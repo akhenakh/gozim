@@ -45,7 +45,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	a.z = z
 	a.URLPtr = offset
 
-	mimeIdx, err := readInt16(z.getBytesRangeAt(offset, offset+2))
+	mimeIdx, err := readInt16(z.bytesRangeAt(offset, offset+2))
 	if err != nil {
 		panic(err)
 	}
@@ -57,15 +57,15 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 		return nil
 	}
 
-	s := z.getBytesRangeAt(offset+3, offset+4)
+	s := z.bytesRangeAt(offset+3, offset+4)
 	a.Namespace = s[0]
 
-	a.cluster, err = readInt32(z.getBytesRangeAt(offset+8, offset+8+4))
+	a.cluster, err = readInt32(z.bytesRangeAt(offset+8, offset+8+4))
 	if err != nil {
 		panic(err)
 	}
 
-	a.blob, err = readInt32(z.getBytesRangeAt(offset+12, offset+12+4))
+	a.blob, err = readInt32(z.bytesRangeAt(offset+12, offset+12+4))
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +73,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	// Redirect
 	if mimeIdx == RedirectEntry {
 		// assume the url + title won't be longer than 2k
-		b := bytes.NewBuffer(z.getBytesRangeAt(offset+12, offset+12+2048))
+		b := bytes.NewBuffer(z.bytesRangeAt(offset+12, offset+12+2048))
 		a.url, err = b.ReadString('\x00')
 		if err != nil {
 			panic(err)
@@ -89,7 +89,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 		return a
 	}
 
-	b := bytes.NewBuffer(z.getBytesRangeAt(offset+16, offset+16+2048))
+	b := bytes.NewBuffer(z.bytesRangeAt(offset+16, offset+16+2048))
 	a.url, err = b.ReadString('\x00')
 	if err != nil {
 		panic(err)
@@ -106,7 +106,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 }
 
 // get the article (Directory) pointed by the offset found in URLpos or Titlepos
-func (z *ZimReader) GetArticleAt(offset uint64) *Article {
+func (z *ZimReader) ArticleAt(offset uint64) *Article {
 	a := articlePool.Get().(*Article)
 	z.FillArticleAt(a, offset)
 	return a
@@ -118,8 +118,8 @@ func (a *Article) Data() []byte {
 	if a.EntryType == RedirectEntry || a.EntryType == LinkTargetEntry || a.EntryType == DeletedEntry {
 		return nil
 	}
-	start, end := a.z.getClusterOffsetsAtIdx(a.cluster)
-	s := a.z.getBytesRangeAt(start, start+1)
+	start, end := a.z.clusterOffsetsAtIdx(a.cluster)
+	s := a.z.bytesRangeAt(start, start+1)
 	compression := uint8(s[0])
 
 	// blob starts at offset, blob ends at offset
@@ -127,7 +127,7 @@ func (a *Article) Data() []byte {
 
 	// LZMA
 	if compression == 4 {
-		b := bytes.NewBuffer(a.z.getBytesRangeAt(start+1, end+1))
+		b := bytes.NewBuffer(a.z.bytesRangeAt(start+1, end+1))
 		dec, err := xz.NewReader(b)
 		defer dec.Close()
 		if err != nil {
@@ -160,17 +160,17 @@ func (a *Article) Data() []byte {
 		startPos := start + 1
 		blobOffset := uint64(a.blob * 4)
 
-		bs, err := readInt32(a.z.getBytesRangeAt(startPos+blobOffset, startPos+blobOffset+4))
+		bs, err := readInt32(a.z.bytesRangeAt(startPos+blobOffset, startPos+blobOffset+4))
 		if err != nil {
 			panic(err)
 		}
 
-		be, err = readInt32(a.z.getBytesRangeAt(startPos+blobOffset+4, startPos+blobOffset+4+4))
+		be, err = readInt32(a.z.bytesRangeAt(startPos+blobOffset+4, startPos+blobOffset+4+4))
 		if err != nil {
 			panic(err)
 		}
 
-		return a.z.getBytesRangeAt(startPos+uint64(bs), startPos+uint64(be))
+		return a.z.bytesRangeAt(startPos+uint64(bs), startPos+uint64(be))
 	}
 
 	fmt.Println("Unhandled compression")
@@ -206,15 +206,15 @@ func (a *Article) RedirectIndex() (uint32, error) {
 	return a.cluster, nil
 }
 
-func (a *Article) getBlobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
+func (a *Article) blobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
 	idx := a.blob
 	offset := z.clusterPtrPos + uint64(idx)*8
-	start, err := readInt64(z.getBytesRangeAt(offset, offset+8))
+	start, err := readInt64(z.bytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
 	offset = z.clusterPtrPos + uint64(idx+1)*8
-	end, err = readInt64(z.getBytesRangeAt(offset, offset+8))
+	end, err = readInt64(z.bytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}

@@ -71,7 +71,7 @@ func (z *ZimReader) MimeTypes() []string {
 
 	var s []string
 	// assume mime list fit in 2k
-	b := bytes.NewBuffer(z.getBytesRangeAt(z.mimeListPos, z.mimeListPos+2048))
+	b := bytes.NewBuffer(z.bytesRangeAt(z.mimeListPos, z.mimeListPos+2048))
 
 	for {
 		line, err := b.ReadBytes('\x00')
@@ -101,8 +101,8 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 		var start uint32 = 1
 
 		for idx = start; idx < z.ArticleCount; idx++ {
-			offset := z.GetOffsetAtURLIdx(idx)
-			art := z.GetArticleAt(offset)
+			offset := z.OffsetAtURLIdx(idx)
+			art := z.ArticleAt(offset)
 			if art == nil {
 				//TODO: deal with redirect continue
 			}
@@ -125,7 +125,7 @@ func (z *ZimReader) ListTitlesPtr() <-chan uint32 {
 		var count uint32
 
 		for pos = z.titlePtrPos; count < z.ArticleCount; pos += 4 {
-			idx, err := readInt32(z.getBytesRangeAt(pos, pos+4))
+			idx, err := readInt32(z.bytesRangeAt(pos, pos+4))
 			if err != nil {
 				panic(err)
 			}
@@ -143,7 +143,7 @@ func (z *ZimReader) ListTitlesPtr() <-chan uint32 {
 func (z *ZimReader) ListTitlesPtrIterator(cb func(uint32)) {
 	var count uint32
 	for pos := z.titlePtrPos; count < z.ArticleCount; pos += 4 {
-		idx, err := readInt32(z.getBytesRangeAt(pos, pos+4))
+		idx, err := readInt32(z.bytesRangeAt(pos, pos+4))
 		if err != nil {
 			panic(err)
 		}
@@ -164,7 +164,7 @@ func (z *ZimReader) GetPageNoIndex(url string) *Article {
 	for {
 		pos := (start + stop) / 2
 
-		offset := z.GetOffsetAtURLIdx(pos)
+		offset := z.OffsetAtURLIdx(pos)
 
 		art = z.FillArticleAt(art, offset)
 		if art.FullURL() == url {
@@ -185,17 +185,17 @@ func (z *ZimReader) GetPageNoIndex(url string) *Article {
 }
 
 // return the article main page if it exists
-func (z *ZimReader) GetMainPage() *Article {
+func (z *ZimReader) MainPage() *Article {
 	if z.mainPage == 0xffffffff {
 		return nil
 	}
-	return z.GetArticleAt(z.GetOffsetAtURLIdx(z.mainPage))
+	return z.ArticleAt(z.OffsetAtURLIdx(z.mainPage))
 }
 
 // get the offset pointing to Article at pos in the URL idx
-func (z *ZimReader) GetOffsetAtURLIdx(idx uint32) uint64 {
+func (z *ZimReader) OffsetAtURLIdx(idx uint32) uint64 {
 	offset := z.urlPtrPos + uint64(idx)*8
-	v, err := readInt64(z.getBytesRangeAt(offset, offset+8))
+	v, err := readInt64(z.bytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
@@ -218,7 +218,7 @@ func (z *ZimReader) String() string {
 
 // getBytesRangeAt returns bytes from start to end
 // it's needed to abstract mmap usages rather than read directly on the mmap slices
-func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
+func (z *ZimReader) bytesRangeAt(start, end uint64) []byte {
 	if len(z.mmap) > 0 {
 		return z.mmap[start:end]
 	}
@@ -240,7 +240,7 @@ func (z *ZimReader) getBytesRangeAt(start, end uint64) []byte {
 // It is decided to panic on corrupted zim file
 func (z *ZimReader) readFileHeaders() error {
 	// checking for file type
-	v, err := readInt32(z.getBytesRangeAt(0, 0+4))
+	v, err := readInt32(z.bytesRangeAt(0, 0+4))
 	if err != nil {
 		panic(err)
 	}
@@ -249,7 +249,7 @@ func (z *ZimReader) readFileHeaders() error {
 	}
 
 	// checking for version
-	v, err = readInt32(z.getBytesRangeAt(4, 4+4))
+	v, err = readInt32(z.bytesRangeAt(4, 4+4))
 	if err != nil {
 		panic(err)
 	}
@@ -258,56 +258,56 @@ func (z *ZimReader) readFileHeaders() error {
 	}
 
 	// checking for articles count
-	v, err = readInt32(z.getBytesRangeAt(24, 24+4))
+	v, err = readInt32(z.bytesRangeAt(24, 24+4))
 	if err != nil {
 		panic(err)
 	}
 	z.ArticleCount = v
 
 	// checking for cluster count
-	v, err = readInt32(z.getBytesRangeAt(28, 28+4))
+	v, err = readInt32(z.bytesRangeAt(28, 28+4))
 	if err != nil {
 		panic(err)
 	}
 	z.clusterCount = v
 
 	// checking for urlPtrPos
-	vb, err := readInt64(z.getBytesRangeAt(32, 32+8))
+	vb, err := readInt64(z.bytesRangeAt(32, 32+8))
 	if err != nil {
 		panic(err)
 	}
 	z.urlPtrPos = vb
 
 	// checking for titlePtrPos
-	vb, err = readInt64(z.getBytesRangeAt(40, 40+8))
+	vb, err = readInt64(z.bytesRangeAt(40, 40+8))
 	if err != nil {
 		panic(err)
 	}
 	z.titlePtrPos = vb
 
 	// checking for clusterPtrPos
-	vb, err = readInt64(z.getBytesRangeAt(48, 48+8))
+	vb, err = readInt64(z.bytesRangeAt(48, 48+8))
 	if err != nil {
 		panic(err)
 	}
 	z.clusterPtrPos = vb
 
 	// checking for mimeListPos
-	vb, err = readInt64(z.getBytesRangeAt(56, 56+8))
+	vb, err = readInt64(z.bytesRangeAt(56, 56+8))
 	if err != nil {
 		panic(err)
 	}
 	z.mimeListPos = vb
 
 	// checking for mainPage
-	v, err = readInt32(z.getBytesRangeAt(64, 64+4))
+	v, err = readInt32(z.bytesRangeAt(64, 64+4))
 	if err != nil {
 		panic(err)
 	}
 	z.mainPage = v
 
 	// checking for layoutPage
-	v, err = readInt32(z.getBytesRangeAt(68, 68+4))
+	v, err = readInt32(z.bytesRangeAt(68, 68+4))
 	if err != nil {
 		panic(err)
 	}
@@ -318,14 +318,14 @@ func (z *ZimReader) readFileHeaders() error {
 }
 
 // return data at start and end offsets for cluster idx
-func (z *ZimReader) getClusterOffsetsAtIdx(idx uint32) (start, end uint64) {
+func (z *ZimReader) clusterOffsetsAtIdx(idx uint32) (start, end uint64) {
 	offset := z.clusterPtrPos + (uint64(idx) * 8)
-	start, err := readInt64(z.getBytesRangeAt(offset, offset+8))
+	start, err := readInt64(z.bytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}
 	offset = z.clusterPtrPos + (uint64(idx+1) * 8)
-	end, err = readInt64(z.getBytesRangeAt(offset, offset+8))
+	end, err = readInt64(z.bytesRangeAt(offset, offset+8))
 	if err != nil {
 		panic(err)
 	}

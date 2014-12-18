@@ -16,7 +16,7 @@ type ArticleIndex struct {
 
 var (
 	path       = flag.String("path", "", "path for the zim file")
-	indexPath  = flag.String("indexPath", "", "path for the index file")
+	indexPath  = flag.String("index", "", "path for the index file")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	z          *zim.ZimReader
 	lang       = flag.String("lang", "en", "language for indexation")
@@ -84,8 +84,14 @@ func main() {
 	idoc := ArticleIndex{}
 
 	z.ListTitlesPtrIterator(func(idx uint32) {
-		offset := z.GetOffsetAtURLIdx(idx)
-		a := z.GetArticleAt(offset)
+
+		if i == 1000 {
+			fmt.Print("*")
+			i = 0
+		}
+
+		offset := z.OffsetAtURLIdx(idx)
+		a := z.ArticleAt(offset)
 		if a.EntryType == zim.RedirectEntry || a.EntryType == zim.LinkTargetEntry || a.EntryType == zim.DeletedEntry {
 			return
 		}
@@ -96,9 +102,8 @@ func main() {
 		}
 
 		i++
-		if i == 1000 {
-			fmt.Print("*")
-			i = 0
-		}
 	})
+
+	index.Close()
+
 }

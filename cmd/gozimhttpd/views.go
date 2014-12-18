@@ -59,7 +59,7 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
 			} else {
-				ra := Z.GetArticleAt(Z.GetOffsetAtURLIdx(ridx))
+				ra := Z.ArticleAt(Z.OffsetAtURLIdx(ridx))
 				Cache.Add(url, CachedResponse{
 					ResponseType: RedirectResponse,
 					Data:         []byte(ra.FullURL())})
@@ -89,7 +89,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mainPage := Z.GetMainPage()
+	mainPage := Z.MainPage()
 	var hasMainPage bool
 
 	if mainPage != nil {
@@ -159,8 +159,8 @@ func articleHandler(w http.ResponseWriter, r *http.Request) {
 		idx, _ = strconv.Atoi(iq)
 	}
 
-	offset := Z.GetOffsetAtURLIdx(uint32(idx))
-	a := Z.GetArticleAt(offset)
+	offset := Z.OffsetAtURLIdx(uint32(idx))
+	a := Z.ArticleAt(offset)
 
 	if a == nil {
 		http.NotFound(w, r)
@@ -186,8 +186,8 @@ func browseHandler(w http.ResponseWriter, r *http.Request) {
 	Articles := make([]*zim.Article, ArticlesPerPage)
 	var pos int
 	for i := page * ArticlesPerPage; i < page*ArticlesPerPage+ArticlesPerPage; i++ {
-		offset := Z.GetOffsetAtURLIdx(uint32(i))
-		a := Z.GetArticleAt(offset)
+		offset := Z.OffsetAtURLIdx(uint32(i))
+		a := Z.ArticleAt(offset)
 		if a.Title == "" {
 			a.Title = a.FullURL()
 		}
