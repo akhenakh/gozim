@@ -52,12 +52,12 @@ func TestDisplayInfost(t *testing.T) {
 	t.Log(info)
 }
 
-func TestGetURLAtIdx(t *testing.T) {
+func TestURLAtIdx(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetOffsetAtURLIdx(5)
-	if Z.GetArticleAt(p) == nil {
+	p := Z.OffsetAtURLIdx(5)
+	if Z.ArticleAt(p) == nil {
 		t.Errorf("Can't find 1st url")
 	}
 }
@@ -66,17 +66,17 @@ func TestDisplayArticle(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetOffsetAtURLIdx(5)
+	p := Z.OffsetAtURLIdx(5)
 
 	var a *Article
-	if a = Z.GetArticleAt(p); a == nil {
+	if a = Z.ArticleAt(p); a == nil {
 		t.Errorf("Can't find 1st url")
 	}
 
 	t.Log(a)
 }
 
-func TestGetPageNoIndex(t *testing.T) {
+func TestPageNoIndex(t *testing.T) {
 	setup(t)
 
 	var a *Article
@@ -112,7 +112,7 @@ func TestMainPage(t *testing.T) {
 	setup(t)
 
 	var a *Article
-	if a = Z.GetMainPage(); a == nil {
+	if a = Z.MainPage(); a == nil {
 		t.Errorf("Can't find the mainpage article")
 	}
 
@@ -123,8 +123,8 @@ func TestData(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.GetOffsetAtURLIdx(2)
-	a := Z.GetArticleAt(p)
+	p := Z.OffsetAtURLIdx(2)
+	a := Z.ArticleAt(p)
 	data := string(a.Data())
 	if a.EntryType != RedirectEntry {
 		if len(data) == 0 {
