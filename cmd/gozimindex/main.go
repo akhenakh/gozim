@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
@@ -67,6 +68,7 @@ func main() {
 	titleMapping := bleve.NewTextFieldMapping()
 	titleMapping.Analyzer = *lang
 	titleMapping.Store = false
+	titleMapping.Index = true
 	articleMapping.AddFieldMappingsAt("Title", titleMapping)
 
 	mapping := bleve.NewIndexMapping()
@@ -81,6 +83,8 @@ func main() {
 
 	i := 0
 
+	batch := bleve.NewBatch()
+	batchCount := 0
 	idoc := ArticleIndex{}
 
 	z.ListTitlesPtrIterator(func(idx uint32) {
@@ -95,14 +99,34 @@ func main() {
 		if a.EntryType == zim.RedirectEntry || a.EntryType == zim.LinkTargetEntry || a.EntryType == zim.DeletedEntry {
 			return
 		}
+
 		if a.Namespace == 'A' {
 			idoc.Title = a.Title
 			idoc.Index = fmt.Sprint(idx)
-			index.Index(idoc.Title, idoc)
+			batch.Index(idoc.Title, idoc)
 		}
 
+		batchCount++
 		i++
+
+		// send a batch of 1000 entries to bleve
+		if batchCount >= 1000 {
+			err = index.Batch(batch)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+			batch = bleve.NewBatch()
+			batchCount = 0
+		}
 	})
+
+	// batch the result
+	if batchCount > 0 {
+		err = index.Batch(batch)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+	}
 
 	index.Close()
 
