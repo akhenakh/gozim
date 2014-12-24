@@ -122,7 +122,6 @@ func main() {
 
 	// tpl
 	http.HandleFunc("/search/", makeGzipHandler(searchHandler))
-	http.HandleFunc("/article/", articleHandler)
 	http.HandleFunc("/browse/", makeGzipHandler(browseHandler))
 	http.HandleFunc("/robots.txt", robotHandler)
 	http.HandleFunc("/", makeGzipHandler(homeHandler))

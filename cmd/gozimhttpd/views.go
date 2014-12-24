@@ -152,7 +152,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			offset := Z.OffsetAtURLIdx(uint32(idx))
 			a := Z.ArticleAt(offset)
-			l = append(l, map[string]string{"Id": h.ID, "Score": strconv.FormatFloat(h.Score, 'f', 6, 64), "Title": a.Title})
+			l = append(l, map[string]string{
+				"Score": strconv.FormatFloat(h.Score, 'f', 1, 64),
+				"Title": a.Title,
+				"URL":   "/zim/" + a.FullURL()})
 
 		}
 		d["Hits"] = l
@@ -163,25 +166,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	templates["searchResult"].Execute(w, d)
-}
-
-// articleHandler is used to display articles  referred from a search result
-// with the indexed zim position
-func articleHandler(w http.ResponseWriter, r *http.Request) {
-	var idx int
-	iq := r.URL.Query().Get("index")
-	if iq != "" {
-		idx, _ = strconv.Atoi(iq)
-	}
-
-	offset := Z.OffsetAtURLIdx(uint32(idx))
-	a := Z.ArticleAt(offset)
-
-	if a == nil {
-		http.NotFound(w, r)
-		return
-	}
-	http.Redirect(w, r, "/zim/"+a.FullURL(), http.StatusMovedPermanently)
 }
 
 // browseHandler is browsing the zim page per page
