@@ -38,6 +38,7 @@ func (a *ArticleIndex) Type() string {
 }
 
 func main() {
+
 	flag.Parse()
 
 	if *path == "" {
@@ -55,6 +56,7 @@ func main() {
 
 	switch *lang {
 	case "fr", "en":
+		//TODO: create a simple language support for stop word
 	default:
 		panic("unsupported language")
 	}
@@ -66,7 +68,7 @@ func main() {
 	articleMapping.AddFieldMappingsAt("Index", offsetFieldMapping)
 
 	titleMapping := bleve.NewTextFieldMapping()
-	titleMapping.Analyzer = *lang
+	titleMapping.Analyzer = "standard"
 	titleMapping.Store = false
 	titleMapping.Index = true
 	articleMapping.AddFieldMappingsAt("Title", titleMapping)
