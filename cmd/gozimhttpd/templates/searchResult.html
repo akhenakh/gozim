@@ -65,7 +65,7 @@
         {{with .Hits}}
         {{range .}}
           <tr>
-            <td><a href="/article/?index={{ .Fields.Index }}"{{ .ID}}>{{ .ID }}</td>
+            <td><a href="/article/?index={{ .Id }}">{{ .Title }}</td>
             <td>{{ .Score }}</td>
           </tr>
         {{end}}

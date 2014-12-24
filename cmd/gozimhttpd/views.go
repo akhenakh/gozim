@@ -128,10 +128,9 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := bleve.NewMatchQuery(q)
+	query := bleve.NewQueryStringQuery(q)
 	search := bleve.NewSearchRequest(query)
-	search.Fields = []string{"Index"}
-	search.Highlight = bleve.NewHighlight()
+	search.Fields = []string{"Title"}
 
 	sr, err := index.Search(search)
 	if err != nil {
@@ -141,7 +140,23 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	if sr.Total > 0 {
 		d["Info"] = fmt.Sprintf("%d matches for query [%s], took %s", sr.Total, q, sr.Took)
-		d["Hits"] = sr.Hits
+
+		// Constructs a list of Hits
+		var l []map[string]string
+
+		for _, h := range sr.Hits {
+			idx, err := strconv.Atoi(h.ID)
+			if err != nil {
+				log.Println(err.Error())
+				continue
+			}
+			offset := Z.OffsetAtURLIdx(uint32(idx))
+			a := Z.ArticleAt(offset)
+			l = append(l, map[string]string{"Id": h.ID, "Score": strconv.FormatFloat(h.Score, 'f', 6, 64), "Title": a.Title})
+
+		}
+		d["Hits"] = l
+
 	} else {
 		d["Info"] = fmt.Sprintf("No match for [%s], took %s", q, sr.Took)
 		d["Hits"] = 0

@@ -12,7 +12,6 @@ import (
 
 type ArticleIndex struct {
 	Title string
-	Index string
 }
 
 var (
@@ -55,26 +54,23 @@ func main() {
 	}
 
 	switch *lang {
-	case "fr", "en":
+	case "en":
 		//TODO: create a simple language support for stop word
 	default:
 		panic("unsupported language")
 	}
 
-	articleMapping := bleve.NewDocumentMapping()
+	mapping := bleve.NewIndexMapping()
+	mapping.DefaultType = "Article"
 
-	offsetFieldMapping := bleve.NewTextFieldMapping()
-	offsetFieldMapping.Index = false
-	articleMapping.AddFieldMappingsAt("Index", offsetFieldMapping)
+	articleMapping := bleve.NewDocumentMapping()
+	mapping.AddDocumentMapping("Article", articleMapping)
 
 	titleMapping := bleve.NewTextFieldMapping()
-	titleMapping.Analyzer = "standard"
 	titleMapping.Store = false
 	titleMapping.Index = true
+	titleMapping.Analyzer = "standard"
 	articleMapping.AddFieldMappingsAt("Title", titleMapping)
-
-	mapping := bleve.NewIndexMapping()
-	mapping.AddDocumentMapping("Article", articleMapping)
 
 	fmt.Println(registry.AnalyzerTypesAndInstances())
 
@@ -104,14 +100,14 @@ func main() {
 
 		if a.Namespace == 'A' {
 			idoc.Title = a.Title
-			idoc.Index = fmt.Sprint(idx)
-			batch.Index("Title", idoc)
+			// index the idoc with the idx as key
+			batch.Index(fmt.Sprint(idx), idoc)
 		}
 
 		batchCount++
 		i++
 
-		// send a batch of 1000 entries to bleve
+		// send a batch to bleve
 		if batchCount >= 10000 {
 			err = index.Batch(batch)
 			if err != nil {
@@ -122,7 +118,7 @@ func main() {
 		}
 	})
 
-	// batch the result
+	// batch the rest
 	if batchCount > 0 {
 		err = index.Batch(batch)
 		if err != nil {
