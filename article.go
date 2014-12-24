@@ -112,8 +112,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 
 // get the article (Directory) pointed by the offset found in URLpos or Titlepos
 func (z *ZimReader) ArticleAt(offset uint64) *Article {
-	//a := articlePool.Get().(*Article)
-	a := new(Article)
+	a := articlePool.Get().(*Article)
 	z.FillArticleAt(a, offset)
 	return a
 }
