@@ -96,18 +96,24 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	}
 	a.url = strings.TrimRight(string(a.url), "\x00")
 
-	a.Title, err = b.ReadString('\x00')
+	title, err := b.ReadString('\x00')
 	if err != nil {
 		panic(err)
 	}
-	a.Title = strings.TrimRight(string(a.Title), "\x00")
+	title = strings.TrimRight(string(title), "\x00")
+	// This is a trick to force a copy and avoid retain of the full buffer
+	// mainly for indexing title reasons
+	if len(title) != 0 {
+		a.Title = title[0:1] + title[1:]
+	}
 
 	return a
 }
 
 // get the article (Directory) pointed by the offset found in URLpos or Titlepos
 func (z *ZimReader) ArticleAt(offset uint64) *Article {
-	a := articlePool.Get().(*Article)
+	//a := articlePool.Get().(*Article)
+	a := new(Article)
 	z.FillArticleAt(a, offset)
 	return a
 }

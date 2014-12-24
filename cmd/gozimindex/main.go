@@ -91,7 +91,7 @@ func main() {
 
 	z.ListTitlesPtrIterator(func(idx uint32) {
 
-		if i == 1000 {
+		if i == 10000 {
 			fmt.Print("*")
 			i = 0
 		}
@@ -105,14 +105,14 @@ func main() {
 		if a.Namespace == 'A' {
 			idoc.Title = a.Title
 			idoc.Index = fmt.Sprint(idx)
-			batch.Index(idoc.Title, idoc)
+			batch.Index("Title", idoc)
 		}
 
 		batchCount++
 		i++
 
 		// send a batch of 1000 entries to bleve
-		if batchCount >= 1000 {
+		if batchCount >= 10000 {
 			err = index.Batch(batch)
 			if err != nil {
 				log.Fatal(err.Error())
