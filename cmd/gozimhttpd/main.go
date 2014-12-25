@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"strconv"
 
 	"github.com/GeertJohan/go.rice"
 	"github.com/akhenakh/gozim"
@@ -32,6 +33,7 @@ type CachedResponse struct {
 }
 
 var (
+	port       = flag.Int("port", -1, "port to listen to, read HOST env if not specified, default to 8080 otherwise")
 	zimPath    = flag.String("path", "", "path for the zim file")
 	indexPath  = flag.String("index", "", "path for the index file")
 	mmap       = flag.Bool("mmap", false, "use mmap")
@@ -70,7 +72,7 @@ func registerTemplate(name string, tplBox *rice.Box) {
 func main() {
 	flag.Parse()
 	if *zimPath == "" {
-		panic(errors.New("provide a zim file path"))
+		log.Fatal(errors.New("provide a zim file path"))
 	}
 
 	if *mmap {
@@ -80,7 +82,7 @@ func main() {
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
@@ -103,7 +105,7 @@ func main() {
 		// open the db
 		index, err = bleve.Open(*indexPath)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 	}
 
@@ -117,11 +119,8 @@ func main() {
 	z, err := zim.NewReader(*zimPath, *mmap)
 	Z = z
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
-	// Opening large indexes could takes minutes on raspberry
-	log.Println("Ready to answer")
 
 	// tpl
 	http.HandleFunc("/search/", makeGzipHandler(searchHandler))
@@ -134,6 +133,23 @@ func main() {
 	// this is less important when using indexes
 	Cache = lru.New(40)
 
-	http.ListenAndServe(":8080", nil)
+	// default listening to port 8080
+	listenPath := ":8080"
+
+	if len(os.Getenv("PORT")) > 0 {
+		listenPath = ":" + os.Getenv("PORT")
+	}
+
+	if port != nil && *port > 0 {
+		listenPath = ":" + strconv.Itoa(*port)
+	}
+
+	// Opening large indexes could takes minutes on raspberry
+	log.Println("Listening on", listenPath)
+
+	err = http.ListenAndServe(listenPath, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }
