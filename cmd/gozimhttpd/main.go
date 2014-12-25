@@ -120,6 +120,9 @@ func main() {
 		panic(err)
 	}
 
+	// Opening large indexes could takes minutes on raspberry
+	log.Println("Ready to answer")
+
 	// tpl
 	http.HandleFunc("/search/", makeGzipHandler(searchHandler))
 	http.HandleFunc("/browse/", makeGzipHandler(browseHandler))
