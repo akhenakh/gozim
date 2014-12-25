@@ -94,7 +94,8 @@ func main() {
 
 		offset := z.OffsetAtURLIdx(idx)
 		a := z.ArticleAt(offset)
-		if a.EntryType == zim.RedirectEntry || a.EntryType == zim.LinkTargetEntry || a.EntryType == zim.DeletedEntry {
+		if a.EntryType == zim.DeletedEntry {
+			i++
 			return
 		}
 
@@ -102,9 +103,9 @@ func main() {
 			idoc.Title = a.Title
 			// index the idoc with the idx as key
 			batch.Index(fmt.Sprint(idx), idoc)
+			batchCount++
 		}
 
-		batchCount++
 		i++
 
 		// send a batch to bleve
