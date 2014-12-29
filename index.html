@@ -22,8 +22,7 @@
           <h2 id="project_tagline">A Go native implementation for ZIM files</h2>
 
             <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/akhenakh/gozim/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/akhenakh/gozim/tarball/master">Download this project as a tar.gz file</a>
+              <a class="zip_download_link" href="https://github.com/akhenakh/gozim/releases/">Download</a>
             </section>
         </header>
     </div>
@@ -65,7 +64,8 @@ Gozim is a server side tool providing web pages to cheap clients, install it som
 
 <p>It's written in Go language and the indexer is using Bleve</p>
 <ul>
-<li>Download non indexed ZIM files (Gozim is using its own index system)</li>
+<li>Download Gozim binary for your platform from <a href="https://github.com/akhenakh/gozim/releases/">Github</a></li>
+<li>Download a <a href="http://download.kiwix.org/zim/">non indexed ZIM file</a> (Gozim is using its own index system)</li>
 <li>Create the optional index <code>gozimindex -path=yourzimfile.zim -indexPath=yourzimfile.idx</code> this gives you a full text search on the article's titles</li>
 <li>Start the web server as follow
 <code>gozimhttpd -path=yourzimfile.zim -index=yourzimfile.idx</code> and launch your browser to http://yourip:8080</li>
