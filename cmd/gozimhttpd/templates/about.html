@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>About Gozim</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="/static/custom/custom.css" rel="stylesheet">
+
+  </head>
+
+  <body>
+
+    <!-- Static navbar -->
+    <nav class="navbar navbar-default navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/">Gozim</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/">Home</a></li>
+            <li><a href="/browse/">Browse</a></li>
+            <li><a href="/search">Search</a></li>
+            <li><a class="active" href="/about/">About</a></li>
+
+          </ul>
+          <form class="navbar-form navbar-right" role="form" method="POST" action="/search/">
+            <input type="text" class="form-control" name="search_data" id="search_data" placeholder="Search...">
+          </form>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+
+    <div class="container">
+
+      <div class="jumbotron">
+        <h2>About Gozim project</h2>
+       <p>Gozim was created with the ambition to give unlimited access to knowledge to as many people possible in any imaginable context.</p>
+
+<p>In short, Gozim gives you a copy of the full Wikipedia library accessible offline at all times on your computer.</p>
+
+<p>Think about accessing any wikipedia article you might need during a power outage, a remote expedition, a natural disaster, or during a visit to an internet-restricted country! Thanks to Gozim, any classroom in the world could potentially access and work on Wikipedia, free of any internet connexion.</p>
+
+
+<h3>How does it work ?</h3>
+
+<p>Thanks to the Kiwix, <a href="http://download.kiwix.org/zim/">a full dump of all Wikipedia entries in different languages</a> is provided in a single file.<br>Around 40GB for the entire English version of Wikipedia.<br>
+Gozim is capable of reading that file and serve it via HTTP, even on very small servers (<a href="http://www.raspberrypi.org/">Raspberry Pi</a>).<br>
+With a 25$ 64GB USB key and a 35$ <a href="http://www.raspberrypi.org/">Raspberry Pi</a>, you have enough power to serve multiple users at once.<br>
+As it serves regular web pages, it works with any WIFI/HTTP capable clients: <a href="http://one.laptop.org">OLPC</a>, cheap tablets, smartphones...</p>
+
+<h3>Technical details</h3>
+
+<p>It's written in Go language and the indexer is using Bleve</p>
+<ul>
+<li>Download non indexed ZIM files (Gozim is using its own index system)</li>
+<li>Create the optional index <code>gozimindex -path=yourzimfile.zim -indexPath=yourzimfile.idx</code> this gives you a full text search on the article's titles</li>
+<li>Start the web server as follow
+<code>gozimhttpd -path=yourzimfile.zim -index=yourzimfile.idx</code> and launch your browser to http://yourip:8080</li>
+<li>Gozim is opensource on <a href="http://github.com/akhenakh/gozim">Github</a></li>
+</ul>
+
+<h3>Authors</h3>
+
+<p>Fabrice Aneche <a href="http://github.com/akhenakh">Github</a>, <a href="http://kdl.nobugware.com">Blog</a></p>
+      </div>
+
+    </div> <!-- /container -->
+
+    <div id="footer">
+      <div class="container">
+        <p class="muted credit">Gozim</p>
+      </div>
+    </div>
+
+
+  </body>
+</html>
+

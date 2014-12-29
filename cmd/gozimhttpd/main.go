@@ -58,6 +58,7 @@ func init() {
 	registerTemplate("search", tplBox)
 	registerTemplate("searchNoIdx", tplBox)
 	registerTemplate("searchResult", tplBox)
+	registerTemplate("about", tplBox)
 }
 
 // registerTemplate load template from rice box and add them to a map[string] call templates
@@ -125,6 +126,7 @@ func main() {
 	// tpl
 	http.HandleFunc("/search/", makeGzipHandler(searchHandler))
 	http.HandleFunc("/browse/", makeGzipHandler(browseHandler))
+	http.HandleFunc("/about/", makeGzipHandler(aboutHandler))
 	http.HandleFunc("/robots.txt", robotHandler)
 	http.HandleFunc("/", makeGzipHandler(homeHandler))
 

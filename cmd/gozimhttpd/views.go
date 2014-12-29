@@ -107,6 +107,12 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	templates["index"].Execute(w, d)
 }
 
+func aboutHandler(w http.ResponseWriter, r *http.Request) {
+
+	d := map[string]interface{}{}
+	templates["about"].Execute(w, d)
+}
+
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	d := map[string]interface{}{
 		"Path": path.Base(*zimPath),
