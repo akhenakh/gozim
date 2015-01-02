@@ -44,6 +44,5 @@ TODO
 ====
 Mmap 1st 2GB on 32 bits  
 Selective Gzip encode response based on content type  
-Search with title stemming  
 func rather than if for getBytes  
 
