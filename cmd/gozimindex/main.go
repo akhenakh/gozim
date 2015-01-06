@@ -129,8 +129,6 @@ func main() {
 		}
 	}
 
-	//fmt.Println("closing")
 	index.Close()
-	//fmt.Println("done")
 
 }
