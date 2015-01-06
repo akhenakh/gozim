@@ -16,10 +16,11 @@ type ArticleIndex struct {
 
 var (
 	path       = flag.String("path", "", "path for the zim file")
-	indexPath  = flag.String("index", "", "path for the index file")
+	indexPath  = flag.String("index", "", "path for the index directory")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	z          *zim.ZimReader
 	lang       = flag.String("lang", "en", "language for indexation")
+	batchSize  = flag.Int("batchsize", 10000, "size of bleve batches")
 )
 
 func inList(s []string, value string) bool {
@@ -85,11 +86,12 @@ func main() {
 	batchCount := 0
 	idoc := ArticleIndex{}
 
+	divisor := float64(z.ArticleCount) / 100
+	
 	z.ListTitlesPtrIterator(func(idx uint32) {
 
-		if i == 10000 {
-			fmt.Print("*")
-			i = 0
+		if i % *batchSize == 0 {
+			fmt.Printf("%.2f%% done\n", float64(i) / divisor)
 		}
 
 		offset := z.OffsetAtURLIdx(idx)
@@ -109,7 +111,7 @@ func main() {
 		i++
 
 		// send a batch to bleve
-		if batchCount >= 10000 {
+		if batchCount >= *batchSize {
 			err = index.Batch(batch)
 			if err != nil {
 				log.Fatal(err.Error())
@@ -127,6 +129,8 @@ func main() {
 		}
 	}
 
+	//fmt.Println("closing")
 	index.Close()
+	//fmt.Println("done")
 
 }
