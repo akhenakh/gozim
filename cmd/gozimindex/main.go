@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -42,7 +43,7 @@ func main() {
 	flag.Parse()
 
 	if *path == "" {
-		panic("provide a zim file path")
+		log.Fatal(errors.New("provide a zim file path"))
 	}
 
 	z, err := zim.NewReader(*path, false)
