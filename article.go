@@ -45,10 +45,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	a.z = z
 	a.URLPtr = offset
 
-	mimeIdx, err := readInt16(z.bytesRangeAt(offset, offset+2))
-	if err != nil {
-		panic(err)
-	}
+	mimeIdx := readInt16(z.bytesRangeAt(offset, offset+2))
 	a.EntryType = mimeIdx
 
 	// Linktarget or Target Entry
@@ -60,16 +57,11 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	s := z.bytesRangeAt(offset+3, offset+4)
 	a.Namespace = s[0]
 
-	a.cluster, err = readInt32(z.bytesRangeAt(offset+8, offset+8+4))
-	if err != nil {
-		panic(err)
-	}
+	a.cluster = readInt32(z.bytesRangeAt(offset+8, offset+8+4))
 
-	a.blob, err = readInt32(z.bytesRangeAt(offset+12, offset+12+4))
-	if err != nil {
-		panic(err)
-	}
+	a.blob = readInt32(z.bytesRangeAt(offset+12, offset+12+4))
 
+	var err error
 	// Redirect
 	if mimeIdx == RedirectEntry {
 		// assume the url + title won't be longer than 2k
@@ -94,6 +86,7 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) *Article {
 	if err != nil {
 		panic(err)
 	}
+
 	a.url = strings.TrimRight(string(a.url), "\x00")
 
 	title, err := b.ReadString('\x00')
@@ -146,15 +139,10 @@ func (a *Article) Data() []byte {
 			panic(err)
 		}
 
-		bs, err = readInt32(blob[a.blob*4 : a.blob*4+4])
-		if err != nil {
-			panic(err)
-		}
+		bs = readInt32(blob[a.blob*4 : a.blob*4+4])
 
-		be, err = readInt32(blob[a.blob*4+4 : a.blob*4+4+4])
-		if err != nil {
-			panic(err)
-		}
+		be = readInt32(blob[a.blob*4+4 : a.blob*4+4+4])
+
 		// avoid retaining all the chunk
 		c := make([]byte, be-bs)
 		copy(c, blob[bs:be])
@@ -165,15 +153,9 @@ func (a *Article) Data() []byte {
 		startPos := start + 1
 		blobOffset := uint64(a.blob * 4)
 
-		bs, err := readInt32(a.z.bytesRangeAt(startPos+blobOffset, startPos+blobOffset+4))
-		if err != nil {
-			panic(err)
-		}
+		bs = readInt32(a.z.bytesRangeAt(startPos+blobOffset, startPos+blobOffset+4))
 
-		be, err = readInt32(a.z.bytesRangeAt(startPos+blobOffset+4, startPos+blobOffset+4+4))
-		if err != nil {
-			panic(err)
-		}
+		be = readInt32(a.z.bytesRangeAt(startPos+blobOffset+4, startPos+blobOffset+4+4))
 
 		return a.z.bytesRangeAt(startPos+uint64(bs), startPos+uint64(be))
 	}
@@ -214,14 +196,9 @@ func (a *Article) RedirectIndex() (uint32, error) {
 func (a *Article) blobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
 	idx := a.blob
 	offset := z.clusterPtrPos + uint64(idx)*8
-	start, err := readInt64(z.bytesRangeAt(offset, offset+8))
-	if err != nil {
-		panic(err)
-	}
+	start = readInt64(z.bytesRangeAt(offset, offset+8))
 	offset = z.clusterPtrPos + uint64(idx+1)*8
-	end, err = readInt64(z.bytesRangeAt(offset, offset+8))
-	if err != nil {
-		panic(err)
-	}
+	end = readInt64(z.bytesRangeAt(offset, offset+8))
+
 	return
 }

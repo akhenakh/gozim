@@ -131,8 +131,8 @@ func main() {
 	http.HandleFunc("/", makeGzipHandler(homeHandler))
 
 	// the need for a cache is absolute
-	// a lots of urls will be called repeatedly, css, js ...
-	// this is less important when using indexes
+	// a lot of the same urls will be called repeatedly, css, js ...
+	// avoid to look for those one
 	Cache = lru.New(40)
 
 	// default listening to port 8080
