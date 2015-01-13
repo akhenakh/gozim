@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"html/template"
 	"log"
@@ -73,7 +72,7 @@ func registerTemplate(name string, tplBox *rice.Box) {
 func main() {
 	flag.Parse()
 	if *zimPath == "" {
-		log.Fatal(errors.New("provide a zim file path"))
+		log.Fatal("provide a zim file path")
 	}
 
 	if *mmap {
@@ -99,11 +98,15 @@ func main() {
 	}
 
 	// Do we have an index ?
-	if _, err := os.Stat(*indexPath); err == nil {
-		log.Println("Found indexes")
+	if indexPath != nil {
+		if _, err := os.Stat(*indexPath); err != nil {
+			log.Fatal(err)
+		}
+
 		idx = true
 
 		// open the db
+		var err error
 		index, err = bleve.Open(*indexPath)
 		if err != nil {
 			log.Fatal(err)

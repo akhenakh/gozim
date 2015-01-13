@@ -50,7 +50,7 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		var a *zim.Article
-		a = Z.GetPageNoIndex(url)
+		a, _ = Z.GetPageNoIndex(url)
 
 		if a == nil {
 			Cache.Add(url, CachedResponse{ResponseType: NoResponse})
@@ -59,17 +59,26 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
 			} else {
-				ra := Z.ArticleAt(Z.OffsetAtURLIdx(ridx))
-				Cache.Add(url, CachedResponse{
-					ResponseType: RedirectResponse,
-					Data:         []byte(ra.FullURL())})
+				ra, err := Z.ArticleAtURLIdx(ridx)
+				if err != nil {
+					Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+				} else {
+					Cache.Add(url, CachedResponse{
+						ResponseType: RedirectResponse,
+						Data:         []byte(ra.FullURL())})
+				}
 			}
 		} else {
-			Cache.Add(url, CachedResponse{
-				ResponseType: DataResponse,
-				Data:         a.Data(),
-				MimeType:     a.MimeType(),
-			})
+			data, err := a.Data()
+			if err != nil {
+				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+			} else {
+				Cache.Add(url, CachedResponse{
+					ResponseType: DataResponse,
+					Data:         data,
+					MimeType:     a.MimeType(),
+				})
+			}
 		}
 
 		// look again in the cache for the same entry
@@ -89,10 +98,10 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mainPage := Z.MainPage()
+	mainPage, err := Z.MainPage()
 	var hasMainPage bool
 
-	if mainPage != nil {
+	if err != nil && mainPage != nil {
 		hasMainPage = true
 		mainURL = "/zim/" + mainPage.FullURL()
 	}
@@ -156,8 +165,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 				log.Println(err.Error())
 				continue
 			}
-			offset := Z.OffsetAtURLIdx(uint32(idx))
-			a := Z.ArticleAt(offset)
+			a, err := Z.ArticleAtURLIdx(uint32(idx))
+			if err != nil {
+				continue
+			}
 			l = append(l, map[string]string{
 				"Score": strconv.FormatFloat(h.Score, 'f', 1, 64),
 				"Title": a.Title,
@@ -191,8 +202,10 @@ func browseHandler(w http.ResponseWriter, r *http.Request) {
 	Articles := make([]*zim.Article, ArticlesPerPage)
 	var pos int
 	for i := page * ArticlesPerPage; i < page*ArticlesPerPage+ArticlesPerPage; i++ {
-		offset := Z.OffsetAtURLIdx(uint32(i))
-		a := Z.ArticleAt(offset)
+		a, err := Z.ArticleAtURLIdx(uint32(i))
+		if err != nil {
+			continue
+		}
 		if a.Title == "" {
 			a.Title = a.FullURL()
 		}

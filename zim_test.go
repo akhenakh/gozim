@@ -56,8 +56,9 @@ func TestURLAtIdx(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.OffsetAtURLIdx(5)
-	if Z.ArticleAt(p) == nil {
+	p, _ := Z.OffsetAtURLIdx(5)
+	a, _ := Z.ArticleAt(p)
+	if a == nil {
 		t.Errorf("Can't find 1st url")
 	}
 }
@@ -66,10 +67,9 @@ func TestDisplayArticle(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.OffsetAtURLIdx(5)
-
-	var a *Article
-	if a = Z.ArticleAt(p); a == nil {
+	p, _ := Z.OffsetAtURLIdx(5)
+	a, _ := Z.ArticleAt(p)
+	if a == nil {
 		t.Errorf("Can't find 1st url")
 	}
 
@@ -79,8 +79,8 @@ func TestDisplayArticle(t *testing.T) {
 func TestPageNoIndex(t *testing.T) {
 	setup(t)
 
-	var a *Article
-	if a = Z.GetPageNoIndex("A/Dracula:Capitol_1.html"); a == nil {
+	a, _ := Z.GetPageNoIndex("A/Dracula:Capitol_1.html")
+	if a == nil {
 		t.Errorf("Can't find existing url")
 	}
 }
@@ -111,8 +111,8 @@ func TestListArticles(t *testing.T) {
 func TestMainPage(t *testing.T) {
 	setup(t)
 
-	var a *Article
-	if a = Z.MainPage(); a == nil {
+	a, _ := Z.MainPage()
+	if a == nil {
 		t.Errorf("Can't find the mainpage article")
 	}
 
@@ -123,9 +123,10 @@ func TestData(t *testing.T) {
 	setup(t)
 
 	// addr 0 is a redirect
-	p := Z.OffsetAtURLIdx(2)
-	a := Z.ArticleAt(p)
-	data := string(a.Data())
+	p, _ := Z.OffsetAtURLIdx(2)
+	a, _ := Z.ArticleAt(p)
+	b, _ := a.Data()
+	data := string(b)
 	if a.EntryType != RedirectEntry {
 		if len(data) == 0 {
 			t.Error("can't read data")

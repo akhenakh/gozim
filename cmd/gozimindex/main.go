@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -43,23 +42,23 @@ func main() {
 	flag.Parse()
 
 	if *path == "" {
-		log.Fatal(errors.New("provide a zim file path"))
+		log.Fatal("provide a zim file path")
 	}
 
 	z, err := zim.NewReader(*path, false)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	if *indexPath == "" {
-		panic("Please provide a path for the index")
+		log.Fatal("Please provide a path for the index")
 	}
 
 	switch *lang {
 	case "en":
 		//TODO: create a simple language support for stop word
 	default:
-		panic("unsupported language")
+		log.Fatal("unsupported language")
 	}
 
 	mapping := bleve.NewIndexMapping()
@@ -78,7 +77,7 @@ func main() {
 
 	index, err := bleve.New(*indexPath, mapping)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	i := 0
@@ -88,16 +87,14 @@ func main() {
 	idoc := ArticleIndex{}
 
 	divisor := float64(z.ArticleCount) / 100
-	
+
 	z.ListTitlesPtrIterator(func(idx uint32) {
 
-		if i % *batchSize == 0 {
-			fmt.Printf("%.2f%% done\n", float64(i) / divisor)
+		if i%*batchSize == 0 {
+			fmt.Printf("%.2f%% done\n", float64(i)/divisor)
 		}
-
-		offset := z.OffsetAtURLIdx(idx)
-		a := z.ArticleAt(offset)
-		if a.EntryType == zim.DeletedEntry {
+		a, err := z.ArticleAtURLIdx(idx)
+		if err != nil || a.EntryType == zim.DeletedEntry {
 			i++
 			return
 		}
