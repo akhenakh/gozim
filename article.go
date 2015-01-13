@@ -40,6 +40,30 @@ func init() {
 	}
 }
 
+// convenient method to return the Article at URL index idx
+func (z *ZimReader) ArticleAtURLIdx(idx uint32) (*Article, error) {
+	o, err := z.OffsetAtURLIdx(idx)
+	if err != nil {
+		return nil, err
+	}
+	return z.ArticleAt(o)
+}
+
+// return the article main page if it exists
+func (z *ZimReader) MainPage() (*Article, error) {
+	if z.mainPage == 0xffffffff {
+		return nil, nil
+	}
+	return z.ArticleAtURLIdx(z.mainPage)
+}
+
+// get the article (Directory) pointed by the offset found in URLpos or Titlepos
+func (z *ZimReader) ArticleAt(offset uint64) (*Article, error) {
+	a := articlePool.Get().(*Article)
+	err := z.FillArticleAt(a, offset)
+	return a, err
+}
+
 // Fill an article with datas found at offset
 func (z *ZimReader) FillArticleAt(a *Article, offset uint64) error {
 	a = a
@@ -115,13 +139,6 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) error {
 		a.Title = title[0:1] + title[1:]
 	}
 	return nil
-}
-
-// get the article (Directory) pointed by the offset found in URLpos or Titlepos
-func (z *ZimReader) ArticleAt(offset uint64) (*Article, error) {
-	a := articlePool.Get().(*Article)
-	err := z.FillArticleAt(a, offset)
-	return a, err
 }
 
 // return the uncompressed data associated with this article

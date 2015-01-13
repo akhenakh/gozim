@@ -105,11 +105,7 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 		var start uint32 = 1
 
 		for idx = start; idx < z.ArticleCount; idx++ {
-			offset, err := z.OffsetAtURLIdx(idx)
-			if err != nil {
-				continue
-			}
-			art, err := z.ArticleAt(offset)
+			art, err := z.ArticleAtURLIdx(idx)
 			if err != nil {
 				continue
 			}
@@ -197,23 +193,6 @@ func (z *ZimReader) GetPageNoIndex(url string) (*Article, error) {
 
 	}
 	return nil, errors.New("article not found")
-}
-
-// return the article main page if it exists
-func (z *ZimReader) MainPage() (*Article, error) {
-	if z.mainPage == 0xffffffff {
-		return nil, nil
-	}
-	return z.ArticleAtURLIdx(z.mainPage)
-}
-
-// convenient method to return the Article at URL index idx
-func (z *ZimReader) ArticleAtURLIdx(idx uint32) (*Article, error) {
-	o, err := z.OffsetAtURLIdx(idx)
-	if err != nil {
-		return nil, err
-	}
-	return z.ArticleAt(o)
 }
 
 // get the offset pointing to Article at pos in the URL idx
