@@ -82,7 +82,7 @@ func main() {
 
 	i := 0
 
-	batch := bleve.NewBatch()
+	batch := index.NewBatch()
 	batchCount := 0
 	idoc := ArticleIndex{}
 
@@ -114,7 +114,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err.Error())
 			}
-			batch = bleve.NewBatch()
+			batch = index.NewBatch()
 			batchCount = 0
 		}
 	})
