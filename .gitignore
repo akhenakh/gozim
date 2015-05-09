@@ -16,3 +16,11 @@ _testmain.go
 *.zim
 cmd/gozimhttpd/gozimhttpd
 cmd/gozimindex/gozimindex
+
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+*~
+
