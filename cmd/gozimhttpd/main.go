@@ -70,6 +70,8 @@ func registerTemplate(name string, tplBox *rice.Box) {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	flag.Parse()
 	if *zimPath == "" {
 		log.Fatal("provide a zim file path")
@@ -98,7 +100,7 @@ func main() {
 	}
 
 	// Do we have an index ?
-	if indexPath != nil {
+	if indexPath != nil && *indexPath != "" {
 		if _, err := os.Stat(*indexPath); err != nil {
 			log.Fatal(err)
 		}
