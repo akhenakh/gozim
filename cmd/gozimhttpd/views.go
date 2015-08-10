@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,6 +14,43 @@ import (
 
 const (
 	ArticlesPerPage = 16
+
+	injectionSuffixStr = `<div id="globalWrapper">`
+	injectionStr       = `
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/custom/custom.css" rel="stylesheet">
+
+    <nav class="navbar navbar-default navbar-static-top" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/">Gozim</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="/">Home</a></li>
+            <li><a href="/browse/">Browse</a></li>
+            <li><a href="/search">Search</a></li>
+            <li><a href="/about/">About</a></li>
+
+          </ul>
+          <form class="navbar-form navbar-right" role="form" method="POST" action="/search/">
+            <input type="text" class="form-control" name="search_data" id="search_data" placeholder="Search...">
+          </form>
+        </div>
+      </div>
+    </nav>
+       `
+)
+
+var (
+	injectionSuffix = []byte(injectionSuffixStr)
+	injection       = []byte(injectionStr)
 )
 
 func cacheLookup(url string) (*CachedResponse, bool) {
@@ -73,6 +111,9 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
 			} else {
+				// inject header into pages
+				data = bytes.Replace(data, injectionSuffix, append(injection, injectionSuffix...), 1)
+
 				Cache.Add(url, CachedResponse{
 					ResponseType: DataResponse,
 					Data:         data,
