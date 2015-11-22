@@ -14,6 +14,19 @@ import (
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
 	"github.com/golang/groupcache/lru"
+
+	_ "github.com/blevesearch/bleve/analysis/language/ar"
+	_ "github.com/blevesearch/bleve/analysis/language/cjk"
+	_ "github.com/blevesearch/bleve/analysis/language/ckb"
+	_ "github.com/blevesearch/bleve/analysis/language/en"
+	_ "github.com/blevesearch/bleve/analysis/language/fa"
+	_ "github.com/blevesearch/bleve/analysis/language/fr"
+	_ "github.com/blevesearch/bleve/analysis/language/hi"
+	_ "github.com/blevesearch/bleve/analysis/language/it"
+	_ "github.com/blevesearch/bleve/analysis/language/ja"
+	_ "github.com/blevesearch/bleve/analysis/language/pt"
+
+	_ "github.com/blevesearch/bleve/index/store/goleveldb"
 )
 
 type ResponseType int8

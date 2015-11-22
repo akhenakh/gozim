@@ -7,7 +7,10 @@ import (
 
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
-	"github.com/blevesearch/bleve/registry"
+	_ "github.com/blevesearch/bleve/analysis/language/en"
+	_ "github.com/blevesearch/bleve/analysis/language/fr"
+
+	_ "github.com/blevesearch/bleve/index/store/goleveldb"
 )
 
 type ArticleIndex struct {
@@ -19,7 +22,7 @@ var (
 	indexPath  = flag.String("index", "", "path for the index directory")
 	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	z          *zim.ZimReader
-	lang       = flag.String("lang", "en", "language for indexation")
+	lang       = flag.String("lang", "", "language for indexation")
 	batchSize  = flag.Int("batchsize", 10000, "size of bleve batches")
 )
 
@@ -39,6 +42,8 @@ func (a *ArticleIndex) Type() string {
 
 func main() {
 
+	bleve.Config.DefaultKVStore = "goleveldb"
+
 	flag.Parse()
 
 	if *path == "" {
@@ -54,13 +59,6 @@ func main() {
 		log.Fatal("Please provide a path for the index")
 	}
 
-	switch *lang {
-	case "en":
-		//TODO: create a simple language support for stop word
-	default:
-		log.Fatal("unsupported language")
-	}
-
 	mapping := bleve.NewIndexMapping()
 	mapping.DefaultType = "Article"
 
@@ -71,9 +69,22 @@ func main() {
 	titleMapping.Store = false
 	titleMapping.Index = true
 	titleMapping.Analyzer = "standard"
-	articleMapping.AddFieldMappingsAt("Title", titleMapping)
 
-	fmt.Println(registry.AnalyzerTypesAndInstances())
+	switch *lang {
+	case "fr":
+		titleMapping.Analyzer = "frnostemm"
+	case "en":
+		titleMapping.Analyzer = "ennostemm"
+	case "hi", "it", "ja", "pt", "fa", "cjk", "ckb", "ar":
+		titleMapping.Analyzer = *lang
+
+	case "":
+
+	default:
+		log.Fatal("unsupported language")
+	}
+
+	articleMapping.AddFieldMappingsAt("Title", titleMapping)
 
 	index, err := bleve.New(*indexPath, mapping)
 	if err != nil {
