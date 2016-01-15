@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
 	_ "github.com/blevesearch/bleve/analysis/language/en"
@@ -14,16 +16,18 @@ import (
 )
 
 type ArticleIndex struct {
-	Title string
+	Title   string
+	Content string
 }
 
 var (
-	path       = flag.String("path", "", "path for the zim file")
-	indexPath  = flag.String("index", "", "path for the index directory")
-	cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	z          *zim.ZimReader
-	lang       = flag.String("lang", "", "language for indexation")
-	batchSize  = flag.Int("batchsize", 10000, "size of bleve batches")
+	path         = flag.String("path", "", "path for the zim file")
+	indexPath    = flag.String("index", "", "path for the index directory")
+	cpuprofile   = flag.String("cpuprofile", "", "write cpu profile to file")
+	z            *zim.ZimReader
+	lang         = flag.String("lang", "", "language for indexation")
+	batchSize    = flag.Int("batchsize", 1000, "size of bleve batches")
+	indexContent = flag.Bool("content", false, "expermintal: index the content of the page")
 )
 
 func inList(s []string, value string) bool {
@@ -65,18 +69,18 @@ func main() {
 	articleMapping := bleve.NewDocumentMapping()
 	mapping.AddDocumentMapping("Article", articleMapping)
 
-	titleMapping := bleve.NewTextFieldMapping()
-	titleMapping.Store = false
-	titleMapping.Index = true
-	titleMapping.Analyzer = "standard"
+	fieldMapping := bleve.NewTextFieldMapping()
+	fieldMapping.Store = false
+	fieldMapping.Index = true
+	fieldMapping.Analyzer = "standard"
 
 	switch *lang {
 	case "fr":
-		titleMapping.Analyzer = "frnostemm"
+		fieldMapping.Analyzer = "frnostemm"
 	case "en":
-		titleMapping.Analyzer = "ennostemm"
-	case "hi", "it", "ja", "pt", "fa", "cjk", "ckb", "ar":
-		titleMapping.Analyzer = *lang
+		fieldMapping.Analyzer = "ennostemm"
+	case "ar", "ca", "ckb", "el", "eu", "gl", "hy", "in", "ja", "bg", "cjk", "cs", "fa", "ga", "hi", "id", "it", "pt":
+		fieldMapping.Analyzer = *lang
 
 	case "":
 
@@ -84,7 +88,10 @@ func main() {
 		log.Fatal("unsupported language")
 	}
 
-	articleMapping.AddFieldMappingsAt("Title", titleMapping)
+	articleMapping.AddFieldMappingsAt("Title", fieldMapping)
+	if *indexContent {
+		articleMapping.AddFieldMappingsAt("Content", fieldMapping)
+	}
 
 	index, err := bleve.New(*indexPath, mapping)
 	if err != nil {
@@ -113,7 +120,22 @@ func main() {
 		if a.Namespace == 'A' {
 			idoc.Title = a.Title
 			// index the idoc with the idx as key
+			if *indexContent {
+				data, err := a.Data()
+				if err != nil {
+					log.Fatal(err.Error())
+				}
+
+				r := bytes.NewReader(data)
+				doc, err := goquery.NewDocumentFromReader(r)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				idoc.Content = doc.Text()
+			}
 			batch.Index(fmt.Sprint(idx), idoc)
+
 			batchCount++
 		}
 

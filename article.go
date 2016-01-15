@@ -19,6 +19,15 @@ const (
 
 var articlePool sync.Pool
 
+// the last uncompressed blob, mainly useful while indexing and asking
+// for the same blob again and again
+var bcache BlobCache
+
+type BlobCache struct {
+	blob    []byte
+	cluster uint32
+}
+
 type Article struct {
 	// EntryType is a RedirectEntry/LinkTargetEntry/DeletedEntry or an idx
 	// pointing to ZimReader.mimeTypeList
@@ -162,36 +171,37 @@ func (a *Article) Data() ([]byte, error) {
 
 	// LZMA
 	if compression == 4 {
-		b, err := a.z.bytesRangeAt(start+1, end+1)
-		if err != nil {
-			return nil, err
-		}
-		bbuf := bytes.NewBuffer(b)
-		dec, err := xz.NewReader(bbuf)
-		defer dec.Close()
-		if err != nil {
-			return nil, err
+		if bcache.cluster != a.cluster || len(bcache.blob) == 0 {
+			b, err := a.z.bytesRangeAt(start+1, end+1)
+			if err != nil {
+				return nil, err
+			}
+			bbuf := bytes.NewBuffer(b)
+			dec, err := xz.NewReader(bbuf)
+			defer dec.Close()
+			if err != nil {
+				return nil, err
+			}
+			// the decoded chunk are around 1MB
+			bcache.blob, err = ioutil.ReadAll(dec)
+			if err != nil {
+				return nil, err
+			}
+			bcache.cluster = a.cluster
 		}
 
-		// the decoded chunk are around 1MB
-		// TODO: on smaller devices need to read stream rather than ReadAll
-		blob, err := ioutil.ReadAll(dec)
+		bs, err = readInt32(bcache.blob[a.blob*4:a.blob*4+4], nil)
 		if err != nil {
 			return nil, err
 		}
-
-		bs, err = readInt32(blob[a.blob*4:a.blob*4+4], nil)
-		if err != nil {
-			return nil, err
-		}
-		be, err = readInt32(blob[a.blob*4+4:a.blob*4+4+4], nil)
+		be, err = readInt32(bcache.blob[a.blob*4+4:a.blob*4+4+4], nil)
 		if err != nil {
 			return nil, err
 		}
 
 		// avoid retaining all the chunk
 		c := make([]byte, be-bs)
-		copy(c, blob[bs:be])
+		copy(c, bcache.blob[bs:be])
 		return c, nil
 
 	} else if compression == 0 || compression == 1 {
