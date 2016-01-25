@@ -16,7 +16,7 @@ const (
 )
 
 func cacheLookup(url string) (*CachedResponse, bool) {
-	if v, ok := Cache.Get(url); ok {
+	if v, ok := cache.Get(url); ok {
 		c := v.(CachedResponse)
 		return &c, ok
 	}
@@ -53,17 +53,17 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 		a, _ = Z.GetPageNoIndex(url)
 
 		if a == nil {
-			Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+			cache.Add(url, CachedResponse{ResponseType: NoResponse})
 		} else if a.EntryType == zim.RedirectEntry {
 			ridx, err := a.RedirectIndex()
 			if err != nil {
-				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+				cache.Add(url, CachedResponse{ResponseType: NoResponse})
 			} else {
 				ra, err := Z.ArticleAtURLIdx(ridx)
 				if err != nil {
-					Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+					cache.Add(url, CachedResponse{ResponseType: NoResponse})
 				} else {
-					Cache.Add(url, CachedResponse{
+					cache.Add(url, CachedResponse{
 						ResponseType: RedirectResponse,
 						Data:         []byte(ra.FullURL())})
 				}
@@ -71,9 +71,9 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			data, err := a.Data()
 			if err != nil {
-				Cache.Add(url, CachedResponse{ResponseType: NoResponse})
+				cache.Add(url, CachedResponse{ResponseType: NoResponse})
 			} else {
-				Cache.Add(url, CachedResponse{
+				cache.Add(url, CachedResponse{
 					ResponseType: DataResponse,
 					Data:         data,
 					MimeType:     a.MimeType(),

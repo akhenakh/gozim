@@ -13,7 +13,7 @@ import (
 	"github.com/GeertJohan/go.rice"
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
-	"github.com/golang/groupcache/lru"
+	"github.com/hashicorp/golang-lru"
 
 	_ "github.com/blevesearch/bleve/analysis/language/ar"
 	_ "github.com/blevesearch/bleve/analysis/language/cjk"
@@ -53,7 +53,7 @@ var (
 
 	Z *zim.ZimReader
 	// Cache is filled with CachedResponse to avoid hitting the zim file for a zim URL
-	Cache *lru.Cache
+	cache *lru.ARCCache
 	idx   bool
 	index bleve.Index
 
@@ -151,7 +151,7 @@ func main() {
 	// the need for a cache is absolute
 	// a lot of the same urls will be called repeatedly, css, js ...
 	// avoid to look for those one
-	Cache = lru.New(40)
+	cache, _ = lru.NewARC(40)
 
 	// default listening to port 8080
 	listenPath := ":8080"

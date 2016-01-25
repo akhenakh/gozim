@@ -161,8 +161,8 @@ func (z *ZimReader) ListTitlesPtrIterator(cb func(uint32)) {
 // return the article at the exact url not using any index
 func (z *ZimReader) GetPageNoIndex(url string) (*Article, error) {
 	// starting at 1 to avoid "con" entry
-	var start uint32 = 0
-	var stop uint32 = z.ArticleCount
+	var start uint32
+	stop := z.ArticleCount
 
 	a := new(Article)
 

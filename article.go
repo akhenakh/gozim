@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hashicorp/golang-lru"
 	xz "github.com/remyoudompheng/go-liblzma"
 )
 
@@ -19,28 +20,9 @@ const (
 
 var articlePool sync.Pool
 
-// the last uncompressed blob, mainly useful while indexing and asking
+// the recent uncompressed blobs, mainly useful while indexing and asking
 // for the same blob again and again
-var bcache *BlobCache
-
-type BlobCache struct {
-	sync.RWMutex
-	blob    []byte
-	cluster uint32
-}
-
-func (c *BlobCache) GetBlob() ([]byte, uint32) {
-	c.RLock()
-	defer c.RUnlock()
-	return c.blob, c.cluster
-}
-
-func (c *BlobCache) SetBlob(blob []byte, cluster uint32) {
-	c.Lock()
-	c.blob = blob
-	c.cluster = cluster
-	c.Unlock()
-}
+var bcache *lru.ARCCache
 
 type Article struct {
 	// EntryType is a RedirectEntry/LinkTargetEntry/DeletedEntry or an idx
@@ -61,7 +43,8 @@ func init() {
 			return new(Article)
 		},
 	}
-	bcache = &BlobCache{}
+	// keep 4 latest uncompressed blobs, around 1M per blob
+	bcache, _ = lru.NewARC(5)
 }
 
 // convenient method to return the Article at URL index idx
@@ -90,7 +73,6 @@ func (z *ZimReader) ArticleAt(offset uint64) (*Article, error) {
 
 // Fill an article with datas found at offset
 func (z *ZimReader) FillArticleAt(a *Article, offset uint64) error {
-	a = a
 	a.z = z
 	a.URLPtr = offset
 
@@ -186,10 +168,18 @@ func (a *Article) Data() ([]byte, error) {
 
 	// LZMA
 	if compression == 4 {
-		var blob []byte
-		var cluster uint32
 
-		if blob, cluster = bcache.GetBlob(); cluster != a.cluster || len(blob) == 0 {
+		blobLookup := func() ([]byte, bool) {
+			if v, ok := bcache.Get(a.cluster); ok {
+				b := v.([]byte)
+				return b, ok
+			}
+			return nil, false
+		}
+
+		var blob []byte
+		var ok bool
+		if blob, ok = blobLookup(); !ok {
 			b, err := a.z.bytesRangeAt(start+1, end+1)
 			if err != nil {
 				return nil, err
@@ -201,11 +191,20 @@ func (a *Article) Data() ([]byte, error) {
 				return nil, err
 			}
 			// the decoded chunk are around 1MB
-			blob, err = ioutil.ReadAll(dec)
+			b, err = ioutil.ReadAll(dec)
 			if err != nil {
 				return nil, err
 			}
-			bcache.SetBlob(blob, a.cluster)
+			blob = make([]byte, len(b))
+			copy(blob, b)
+			//TODO: 2 requests for the same blob could occure at the same time
+			bcache.Add(a.cluster, blob)
+		} else {
+			bi, ok := bcache.Get(a.cluster)
+			if !ok {
+				return nil, errors.New("not in cache anymore")
+			}
+			blob = bi.([]byte)
 		}
 
 		bs, err = readInt32(blob[a.blob*4:a.blob*4+4], nil)
