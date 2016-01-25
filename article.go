@@ -21,11 +21,25 @@ var articlePool sync.Pool
 
 // the last uncompressed blob, mainly useful while indexing and asking
 // for the same blob again and again
-var bcache BlobCache
+var bcache *BlobCache
 
 type BlobCache struct {
+	sync.RWMutex
 	blob    []byte
 	cluster uint32
+}
+
+func (c *BlobCache) GetBlob() ([]byte, uint32) {
+	c.RLock()
+	defer c.RUnlock()
+	return c.blob, c.cluster
+}
+
+func (c *BlobCache) SetBlob(blob []byte, cluster uint32) {
+	c.Lock()
+	c.blob = blob
+	c.cluster = cluster
+	c.Unlock()
 }
 
 type Article struct {
@@ -47,6 +61,7 @@ func init() {
 			return new(Article)
 		},
 	}
+	bcache = &BlobCache{}
 }
 
 // convenient method to return the Article at URL index idx
@@ -171,7 +186,10 @@ func (a *Article) Data() ([]byte, error) {
 
 	// LZMA
 	if compression == 4 {
-		if bcache.cluster != a.cluster || len(bcache.blob) == 0 {
+		var blob []byte
+		var cluster uint32
+
+		if blob, cluster = bcache.GetBlob(); cluster != a.cluster || len(blob) == 0 {
 			b, err := a.z.bytesRangeAt(start+1, end+1)
 			if err != nil {
 				return nil, err
@@ -183,25 +201,25 @@ func (a *Article) Data() ([]byte, error) {
 				return nil, err
 			}
 			// the decoded chunk are around 1MB
-			bcache.blob, err = ioutil.ReadAll(dec)
+			blob, err = ioutil.ReadAll(dec)
 			if err != nil {
 				return nil, err
 			}
-			bcache.cluster = a.cluster
+			bcache.SetBlob(blob, a.cluster)
 		}
 
-		bs, err = readInt32(bcache.blob[a.blob*4:a.blob*4+4], nil)
+		bs, err = readInt32(blob[a.blob*4:a.blob*4+4], nil)
 		if err != nil {
 			return nil, err
 		}
-		be, err = readInt32(bcache.blob[a.blob*4+4:a.blob*4+4+4], nil)
+		be, err = readInt32(blob[a.blob*4+4:a.blob*4+4+4], nil)
 		if err != nil {
 			return nil, err
 		}
 
 		// avoid retaining all the chunk
 		c := make([]byte, be-bs)
-		copy(c, bcache.blob[bs:be])
+		copy(c, blob[bs:be])
 		return c, nil
 
 	} else if compression == 0 || compression == 1 {
