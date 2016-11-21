@@ -9,8 +9,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
-	_ "github.com/blevesearch/bleve/analysis/language/en"
-	_ "github.com/blevesearch/bleve/analysis/language/fr"
+	_ "github.com/blevesearch/bleve/analysis/lang/en"
+	_ "github.com/blevesearch/bleve/analysis/lang/fr"
 
 	_ "github.com/blevesearch/bleve/index/store/goleveldb"
 )
