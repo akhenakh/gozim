@@ -27,7 +27,7 @@ func readInt32(b []byte, err error) (v uint32, aerr error) {
 	return
 }
 
-// read a little endian uint32
+// read a little endian uint16
 func readInt16(b []byte, err error) (v uint16, aerr error) {
 	if err != nil {
 		err = aerr
