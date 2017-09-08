@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/golang-lru"
-	xz "github.com/remyoudompheng/go-liblzma"
+	"github.com/ulikunitz/xz"
 )
 
 const (
@@ -186,7 +186,6 @@ func (a *Article) Data() ([]byte, error) {
 			}
 			bbuf := bytes.NewBuffer(b)
 			dec, err := xz.NewReader(bbuf)
-			defer dec.Close()
 			if err != nil {
 				return nil, err
 			}
