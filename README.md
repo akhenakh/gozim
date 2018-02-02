@@ -3,7 +3,7 @@
 gozim
 =====
 
-A Go native implementation for ZIM files. See http://akhenakh.github.io/gozim  
+A Go native implementation for ZIM files. See http://akhenakh.github.io/gozim
 
 ZIM files are used mainly as offline wikipedia copies.
 
@@ -16,11 +16,6 @@ Wikipedia/Wikinews/... ZIMs can be downloaded from there http://download.kiwix.o
 
 build and installation
 ======================
-
-On Ubuntu/Debian youn need those packages to compile gozim
-```
-apt-get install git liblzma-dev mercurial build-essential
-```
 
 For the indexer bleve to work properly it's recommended that you use leveldb as storage.
 ```
@@ -57,7 +52,7 @@ Start the gozim server: `gozimhttpd -path=yourzimfile.zim [-index=yourzimfile.id
 
 TODO
 ====
-Mmap 1st 2GB on 32 bits  
-Selective Gzip encode response based on content type  
-func rather than if for getBytes  
+Mmap 1st 2GB on 32 bits
+Selective Gzip encode response based on content type
+func rather than if for getBytes
 
