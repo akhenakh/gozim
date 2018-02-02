@@ -1,22 +1,21 @@
 package zim
 
-import "testing"
+import (
+	"log"
+	"testing"
+)
 
 var Z *ZimReader
 
-func setup(t *testing.T) {
-	if Z == nil {
-		z, err := NewReader("test.zim", false)
-
-		if err != nil {
-			t.Errorf("Can't read %v", err)
-		}
-		Z = z
+func init() {
+	var err error
+	Z, err = NewReader("test.zim", false)
+	if err != nil {
+		log.Panicf("Can't read %v", err)
 	}
 }
 
 func TestOpen(t *testing.T) {
-	setup(t)
 	if Z.ArticleCount == 0 {
 		t.Errorf("No article found")
 	}
@@ -36,7 +35,6 @@ func TestOpenMmap(t *testing.T) {
 }
 
 func TestMime(t *testing.T) {
-	setup(t)
 
 	if len(Z.MimeTypes()) == 0 {
 		t.Errorf("No mime types found")
@@ -44,7 +42,6 @@ func TestMime(t *testing.T) {
 }
 
 func TestDisplayInfost(t *testing.T) {
-	setup(t)
 	info := Z.String()
 	if len(info) < 0 {
 		t.Errorf("Can't read infos")
@@ -53,7 +50,6 @@ func TestDisplayInfost(t *testing.T) {
 }
 
 func TestURLAtIdx(t *testing.T) {
-	setup(t)
 
 	// addr 0 is a redirect
 	p, _ := Z.OffsetAtURLIdx(5)
@@ -64,7 +60,6 @@ func TestURLAtIdx(t *testing.T) {
 }
 
 func TestDisplayArticle(t *testing.T) {
-	setup(t)
 
 	// addr 0 is a redirect
 	p, _ := Z.OffsetAtURLIdx(5)
@@ -77,7 +72,6 @@ func TestDisplayArticle(t *testing.T) {
 }
 
 func TestPageNoIndex(t *testing.T) {
-	setup(t)
 
 	a, _ := Z.GetPageNoIndex("A/Dracula:Capitol_1.html")
 	if a == nil {
@@ -86,7 +80,6 @@ func TestPageNoIndex(t *testing.T) {
 }
 
 func TestListArticles(t *testing.T) {
-	setup(t)
 
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
@@ -109,7 +102,6 @@ func TestListArticles(t *testing.T) {
 }
 
 func TestMainPage(t *testing.T) {
-	setup(t)
 
 	a, _ := Z.MainPage()
 	if a == nil {
@@ -120,7 +112,6 @@ func TestMainPage(t *testing.T) {
 }
 
 func TestData(t *testing.T) {
-	setup(t)
 
 	// addr 0 is a redirect
 	p, _ := Z.OffsetAtURLIdx(2)
@@ -134,4 +125,26 @@ func TestData(t *testing.T) {
 	}
 	t.Log(a.String())
 	t.Log(data)
+}
+
+func BenchmarkArticleBytes(b *testing.B) {
+
+	// addr 0 is a redirect
+	p, _ := Z.OffsetAtURLIdx(5)
+	a, _ := Z.ArticleAt(p)
+	if a == nil {
+		b.Errorf("Can't find 1st url")
+	}
+	data, err := a.Data()
+	if err != nil {
+		b.Error(err)
+	}
+
+	b.SetBytes(int64(len(data)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		a.Data()
+		bcache.Purge() // prevent memiozing value
+	}
+
 }
