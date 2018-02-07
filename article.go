@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/hashicorp/golang-lru"
-	"github.com/ulikunitz/xz"
 )
 
 const (
@@ -185,10 +184,11 @@ func (a *Article) Data() ([]byte, error) {
 				return nil, err
 			}
 			bbuf := bytes.NewBuffer(b)
-			dec, err := xz.NewReader(bbuf)
+			dec, err := NewXZReader(bbuf)
 			if err != nil {
 				return nil, err
 			}
+			defer dec.Close()
 			// the decoded chunk are around 1MB
 			b, err = ioutil.ReadAll(dec)
 			if err != nil {

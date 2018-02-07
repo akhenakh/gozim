@@ -17,6 +17,11 @@ Wikipedia/Wikinews/... ZIMs can be downloaded from there http://download.kiwix.o
 build and installation
 ======================
 
+On Ubuntu/Debian youn need those packages to compile gozim
+```
+apt-get install git liblzma-dev mercurial build-essential
+```
+
 For the indexer bleve to work properly it's recommended that you use leveldb as storage.
 ```
 go get -u -v -tags all github.com/blevesearch/bleve/...
@@ -42,6 +47,13 @@ After build gozimhttpd command run to embed the files:
 ```
 rice append --exec gozimhttpd
 ```
+
+cross-compilation
+=================
+
+For easy cross-compilation a `!cgo` build version uses a pure go library for lzma parsing.
+The pure go library is around ~2.5x slower in benchmarks so compile on your target OS if
+performance is important.
 
 running
 =======
