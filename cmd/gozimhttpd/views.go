@@ -123,28 +123,34 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
+    pageString := r.FormValue("page")
+    pageNumber, _ := strconv.Atoi(pageString)
+    previousPage := pageNumber - 1
+	if pageNumber == 0 {
+		previousPage = 0
+	}
+    nextPage := pageNumber + 1
+	q := r.FormValue("search_data")
 	d := map[string]interface{}{
+        "Query": q,
 		"Path": path.Base(*zimPath),
+		"Page":         pageNumber,
+		"PreviousPage": previousPage,
+		"NextPage":     nextPage,
 	}
 
 	if !idx {
 		templates["searchNoIdx"].Execute(w, d)
 		return
 	}
-
-	if r.Method == "GET" {
-		templates["search"].Execute(w, d)
-		return
-	}
-
-	q := r.FormValue("search_data")
 	if q == "" {
 		templates["search"].Execute(w, d)
 		return
 	}
-
-	query := bleve.NewQueryStringQuery(q)
-	search := bleve.NewSearchRequest(query)
+    itemCount := 20
+    from := itemCount * pageNumber
+    query := bleve.NewQueryStringQuery(q)
+    search := bleve.NewSearchRequestOptions(query, itemCount, from, false)
 	search.Fields = []string{"Title"}
 
 	sr, err := index.Search(search)
