@@ -82,4 +82,4 @@ The above command will run gozimhttpd on port 8080 of the host machine.  It will
 
 In order to create an index file using the docker container, you still need to mount the directory on the local machine that contains the zim file, and you need to change the entrypoint for the docker image and pass the path to the zim file and the output index files:
 
-`docker run -it --rm -v /path/to/directory/containing/zim/file:/go/data gozim -c "path=/go/data/wikipedia.zim index=/go/data/wikipedia.zim.idx"`
+`docker run -it --rm -v /path/to/directory/containing/zim/file:/go/data --entrypoint=/bin/bash gozim -c "/go/bin/gozimindex -path=/go/data/wikipedia.zim -index=/go/data/wikipedia.zim.idx"`
