@@ -71,7 +71,7 @@ func rather than if for getBytes
 Docker
 ======
 
-To use the Dockerfile, first create a docker image: `docker build -t gozim`
+To use the Dockerfile, first create a docker image: `docker build -t gozim .`
 
 In order to run the Docker image, you need to set an environment variable called ZIM_PATH for the path to the .zim file, and optionally another environment variable called INDEX_PATH for the path to the index files.
 One way to do this is to mount a directory on the local machine that contains these files as a volume of your docker container at run time:
