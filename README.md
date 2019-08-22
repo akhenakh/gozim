@@ -68,3 +68,18 @@ Mmap 1st 2GB on 32 bits
 Selective Gzip encode response based on content type
 func rather than if for getBytes
 
+Docker
+======
+
+To use the Dockerfile, first create a docker image: `docker build -t gozim`
+
+In order to run the Docker image, you need to set an environment variable called ZIM_PATH for the path to the .zim file, and optionally another environment variable called INDEX_PATH for the path to the index files.
+One way to do this is to mount a directory on the local machine that contains these files as a volume of your docker container at run time:
+
+`docker run -it --rm -p 8080:8080 -v /path/to/directory/containing/zim/file:/go/data -e "ZIM_PATH=/go/data/wikipedia.zim" -e "INDEX_PATH=/go/data/wikipedia.zim.idx" gozim`
+
+The above command will run gozimhttpd on port 8080 of the host machine.  It will serve the zim file /path/to/directory/containing/zim/file/wikipedia.zim using the index /path/to/directory/containing/zim/file/wikipedia.zim.idx.
+
+In order to create an index file using the docker container, you still need to mount the directory on the local machine that contains the zim file, and you need to change the entrypoint for the docker image and pass the path to the zim file and the output index files:
+
+`docker run -it --rm -v /path/to/directory/containing/zim/file:/go/data gozim -c "path=/go/data/wikipedia.zim index=/go/data/wikipedia.zim.idx"`
