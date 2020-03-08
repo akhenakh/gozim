@@ -58,7 +58,7 @@ performance is important.
 running
 =======
 
-Optionally, build an index file: `gozimindex -path=yourzimfile.zim -indexPath=yourzimfile.idx`
+Optionally, build an index file: `gozimindex -path=yourzimfile.zim -index=yourzimfile.idx`
 
 Start the gozim server: `gozimhttpd -path=yourzimfile.zim [-index=yourzimfile.idx]`
 
