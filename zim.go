@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"syscall"
 )
 
 const (
@@ -52,7 +51,7 @@ func NewReader(path string, mmap bool) (*ZimReader, error) {
 			totalMmap = size
 		}
 
-		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(totalMmap), syscall.PROT_READ, syscall.MAP_PRIVATE)
+		mmap, err := NewMmap(int(f.Fd()), 0, int(totalMmap))
 		if err != nil {
 			return nil, err
 		}
