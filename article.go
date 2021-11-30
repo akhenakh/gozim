@@ -166,6 +166,7 @@ func (a *Article) Data() ([]byte, error) {
 	// blob starts at offset, blob ends at offset
 	var bs, be uint32
 
+	// LZMA: 4, Zstandard: 5
 	if compression == 4 || compression == 5 {
 		blobLookup := func() ([]byte, bool) {
 			if v, ok := bcache.Get(a.cluster); ok {
