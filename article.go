@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"strings"
 	"sync"
@@ -165,9 +166,8 @@ func (a *Article) Data() ([]byte, error) {
 	// blob starts at offset, blob ends at offset
 	var bs, be uint32
 
-	// LZMA
-	if compression == 4 {
-
+	// LZMA: 4, Zstandard: 5
+	if compression == 4 || compression == 5 {
 		blobLookup := func() ([]byte, bool) {
 			if v, ok := bcache.Get(a.cluster); ok {
 				b := v.([]byte)
@@ -178,13 +178,18 @@ func (a *Article) Data() ([]byte, error) {
 
 		var blob []byte
 		var ok bool
+		var dec io.ReadCloser
 		if blob, ok = blobLookup(); !ok {
 			b, err := a.z.bytesRangeAt(start+1, end+1)
 			if err != nil {
 				return nil, err
 			}
 			bbuf := bytes.NewBuffer(b)
-			dec, err := NewXZReader(bbuf)
+			if compression == 5 {
+				dec, err = NewZstdReader(bbuf)
+			} else {
+				dec, err = NewXZReader(bbuf)
+			}
 			if err != nil {
 				return nil, err
 			}
