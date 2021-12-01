@@ -7,7 +7,7 @@ import (
 	"log"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/akhenakh/gozim"
+	zim "github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
 	_ "github.com/blevesearch/bleve/analysis/lang/en"
 	_ "github.com/blevesearch/bleve/analysis/lang/fr"
@@ -30,22 +30,12 @@ var (
 	indexContent = flag.Bool("content", false, "expermintal: index the content of the page")
 )
 
-func inList(s []string, value string) bool {
-	for _, v := range s {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
 // Type return the Article type (used for bleve indexer)
 func (a *ArticleIndex) Type() string {
 	return "Article"
 }
 
 func main() {
-
 	bleve.Config.DefaultKVStore = "goleveldb"
 
 	flag.Parse()
@@ -107,7 +97,6 @@ func main() {
 	divisor := float64(z.ArticleCount) / 100
 
 	z.ListTitlesPtrIterator(func(idx uint32) {
-
 		if i%*batchSize == 0 {
 			fmt.Printf("%.2f%% done\n", float64(i)/divisor)
 		}
@@ -161,5 +150,4 @@ func main() {
 	}
 
 	index.Close()
-
 }

@@ -7,7 +7,7 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/akhenakh/gozim"
+	zim "github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
 )
 
@@ -18,8 +18,10 @@ const (
 func cacheLookup(url string) (*CachedResponse, bool) {
 	if v, ok := cache.Get(url); ok {
 		c := v.(CachedResponse)
+
 		return &c, ok
 	}
+
 	return nil, false
 }
 
@@ -46,8 +48,8 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 	// lookup in the cache for a cached response
 	if cr, iscached := cacheLookup(url); iscached {
 		handleCachedResponse(cr, w, r)
-		return
 
+		return
 	} else {
 		var a *zim.Article
 		a, _ = Z.GetPageNoIndex(url)
@@ -65,7 +67,8 @@ func zimHandler(w http.ResponseWriter, r *http.Request) {
 				} else {
 					cache.Add(url, CachedResponse{
 						ResponseType: RedirectResponse,
-						Data:         []byte(ra.FullURL())})
+						Data:         []byte(ra.FullURL()),
+					})
 				}
 			}
 		} else {
@@ -117,23 +120,22 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
-
 	d := map[string]interface{}{}
 	templates["about"].Execute(w, d)
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-    pageString := r.FormValue("page")
-    pageNumber, _ := strconv.Atoi(pageString)
-    previousPage := pageNumber - 1
+	pageString := r.FormValue("page")
+	pageNumber, _ := strconv.Atoi(pageString)
+	previousPage := pageNumber - 1
 	if pageNumber == 0 {
 		previousPage = 0
 	}
-    nextPage := pageNumber + 1
+	nextPage := pageNumber + 1
 	q := r.FormValue("search_data")
 	d := map[string]interface{}{
-        "Query": q,
-		"Path": path.Base(*zimPath),
+		"Query":        q,
+		"Path":         path.Base(*zimPath),
 		"Page":         pageNumber,
 		"PreviousPage": previousPage,
 		"NextPage":     nextPage,
@@ -147,10 +149,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		templates["search"].Execute(w, d)
 		return
 	}
-    itemCount := 20
-    from := itemCount * pageNumber
-    query := bleve.NewQueryStringQuery(q)
-    search := bleve.NewSearchRequestOptions(query, itemCount, from, false)
+	itemCount := 20
+	from := itemCount * pageNumber
+	query := bleve.NewQueryStringQuery(q)
+	search := bleve.NewSearchRequestOptions(query, itemCount, from, false)
 	search.Fields = []string{"Title"}
 
 	sr, err := index.Search(search)
@@ -169,16 +171,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			idx, err := strconv.Atoi(h.ID)
 			if err != nil {
 				log.Println(err.Error())
+
 				continue
 			}
 			a, err := Z.ArticleAtURLIdx(uint32(idx))
 			if err != nil {
+				log.Println(err.Error())
+
 				continue
 			}
 			l = append(l, map[string]string{
 				"Score": strconv.FormatFloat(h.Score, 'f', 1, 64),
 				"Title": a.Title,
-				"URL":   "/zim/" + a.FullURL()})
+				"URL":   "/zim/" + a.FullURL(),
+			})
 
 		}
 		d["Hits"] = l

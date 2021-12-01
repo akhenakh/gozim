@@ -10,10 +10,10 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	"github.com/GeertJohan/go.rice"
-	"github.com/akhenakh/gozim"
+	rice "github.com/GeertJohan/go.rice"
+	zim "github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	_ "github.com/blevesearch/bleve/analysis/lang/ar"
 	_ "github.com/blevesearch/bleve/analysis/lang/cjk"
@@ -104,7 +104,7 @@ func main() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
 		go func() {
-			for _ = range c {
+			for range c {
 				pprof.StopCPUProfile()
 				os.Exit(1)
 			}
@@ -170,5 +170,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -77,11 +77,14 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) error {
 	a.URLPtr = offset
 
 	mimeIdx, err := readInt16(z.bytesRangeAt(offset, offset+2))
+	if err != nil {
+		return fmt.Errorf("can't read article %w", err)
+	}
 	a.EntryType = mimeIdx
 
 	// Linktarget or Target Entry
 	if mimeIdx == LinkTargetEntry || mimeIdx == DeletedEntry {
-		//TODO
+		// TODO
 		return nil
 	}
 
@@ -112,13 +115,13 @@ func (z *ZimReader) FillArticleAt(a *Article, offset uint64) error {
 		if err != nil {
 			return err
 		}
-		a.url = strings.TrimRight(string(a.url), "\x00")
+		a.url = strings.TrimRight(a.url, "\x00")
 
 		a.Title, err = bbuf.ReadString('\x00')
 		if err != nil {
 			return err
 		}
-		a.Title = strings.TrimRight(string(a.Title), "\x00")
+		a.Title = strings.TrimRight(a.Title, "\x00")
 		return err
 	}
 
@@ -185,9 +188,11 @@ func (a *Article) Data() ([]byte, error) {
 				return nil, err
 			}
 			bbuf := bytes.NewBuffer(b)
-			if compression == 5 {
+			switch compression {
+			case 5:
 				dec, err = NewZstdReader(bbuf)
-			} else {
+
+			case 4:
 				dec, err = NewXZReader(bbuf)
 			}
 			if err != nil {
@@ -201,7 +206,7 @@ func (a *Article) Data() ([]byte, error) {
 			}
 			blob = make([]byte, len(b))
 			copy(blob, b)
-			//TODO: 2 requests for the same blob could occure at the same time
+			// TODO: 2 requests for the same blob could occure at the same time
 			bcache.Add(a.cluster, blob)
 		} else {
 			bi, ok := bcache.Get(a.cluster)
@@ -226,7 +231,7 @@ func (a *Article) Data() ([]byte, error) {
 		return c, nil
 
 	} else if compression == 0 || compression == 1 {
-		// un compresssed
+		// uncompresssed
 		startPos := start + 1
 		blobOffset := uint64(a.blob * 4)
 
@@ -282,7 +287,7 @@ func (a *Article) blobOffsetsAtIdx(z *ZimReader) (start, end uint64) {
 		return
 	}
 	offset = z.clusterPtrPos + uint64(idx+1)*8
-	end, err = readInt64(z.bytesRangeAt(offset, offset+8))
+	end, _ = readInt64(z.bytesRangeAt(offset, offset+8))
 
 	return
 }

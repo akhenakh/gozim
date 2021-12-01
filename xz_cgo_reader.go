@@ -1,4 +1,4 @@
-// +build cgo
+//go:build cgo
 
 package zim
 
@@ -18,4 +18,8 @@ func NewXZReader(r io.Reader) (*XZReader, error) {
 		return nil, err
 	}
 	return &XZReader{dec}, nil
+}
+
+func (zr *XZReader) Close() error {
+	return zr.Decompressor.Close()
 }

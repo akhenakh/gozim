@@ -48,6 +48,11 @@ After build gozimhttpd command run to embed the files:
 rice append --exec gozimhttpd
 ```
 
+On OSX:
+```
+CGO_CFLAGS=`pkg-config --cflags liblzma` go build 
+```
+
 cross-compilation
 =================
 

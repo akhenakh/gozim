@@ -54,7 +54,7 @@ func NewReader(path string, mmap bool) (*ZimReader, error) {
 
 		mmap, err := syscall.Mmap(int(f.Fd()), 0, int(totalMmap), syscall.PROT_READ, syscall.MAP_PRIVATE)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("can't mmap %w", err)
 		}
 		z.mmap = mmap
 	}
@@ -111,7 +111,7 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 			}
 
 			if art == nil {
-				//TODO: deal with redirect continue
+				// TODO: deal with redirect continue
 			}
 			ch <- art
 		}
@@ -121,7 +121,7 @@ func (z *ZimReader) ListArticles() <-chan *Article {
 }
 
 // list all title pointer, Titles by position contained in a zim file
-// Titles are pointers to URLpos index, usefull for indexing cause smaller to store: uint32
+// Titles are pointers to URLpos index, useful for indexing cause smaller to store: uint32
 // note that this is a slow implementation, a real iterator is faster
 // you are not suppose to use this method on big zim files prefer ListTitlesPtrIterator to build your index
 func (z *ZimReader) ListTitlesPtr() <-chan uint32 {
@@ -225,7 +225,7 @@ func (z *ZimReader) bytesRangeAt(start, end uint64) ([]byte, error) {
 	buf := make([]byte, end-start)
 	n, err := z.f.ReadAt(buf, int64(start))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can't read bytes  %w", err)
 	}
 
 	if n != int(end-start) {
