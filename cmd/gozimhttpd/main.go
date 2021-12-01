@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"html/template"
 	"log"
@@ -10,7 +11,6 @@ import (
 	"runtime/pprof"
 	"strconv"
 
-	rice "github.com/GeertJohan/go.rice"
 	zim "github.com/akhenakh/gozim"
 	"github.com/blevesearch/bleve"
 	lru "github.com/hashicorp/golang-lru"
@@ -56,30 +56,14 @@ var (
 	idx   bool
 	index bleve.Index
 
-	templates map[string]*template.Template
+	templates *template.Template
+
+	//go:embed static
+	staticFS embed.FS
+
+	//go:embed templates/*
+	templateFS embed.FS
 )
-
-func init() {
-	templates = make(map[string]*template.Template)
-
-	tplBox := rice.MustFindBox("templates")
-
-	registerTemplate("index", tplBox)
-	registerTemplate("browse", tplBox)
-	registerTemplate("search", tplBox)
-	registerTemplate("searchNoIdx", tplBox)
-	registerTemplate("searchResult", tplBox)
-	registerTemplate("about", tplBox)
-}
-
-// registerTemplate load template from rice box and add them to a map[string] call templates
-func registerTemplate(name string, tplBox *rice.Box) {
-	tplString, err := tplBox.String(name + ".html")
-	if err != nil {
-		log.Fatal(err)
-	}
-	templates[name] = template.Must(template.New(name).Parse(tplString))
-}
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -127,12 +111,17 @@ func main() {
 		}
 	}
 
-	// assets
-	box := rice.MustFindBox("static")
-	fileServer := http.StripPrefix("/static/", http.FileServer(box.HTTPBox()))
+	tpls, err := template.ParseFS(templateFS, "templates/*.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	templates = tpls
+
+	// static file handler
+	fileServer := http.FileServer(http.FS(staticFS))
 	http.Handle("/static/", fileServer)
 
-	// crompress wiki pages
+	// compress wiki pages
 	http.HandleFunc("/zim/", makeGzipHandler(zimHandler))
 	z, err := zim.NewReader(*zimPath, *mmap)
 	Z = z

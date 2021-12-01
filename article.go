@@ -37,16 +37,6 @@ type Article struct {
 	z         *ZimReader
 }
 
-func init() {
-	articlePool = sync.Pool{
-		New: func() interface{} {
-			return new(Article)
-		},
-	}
-	// keep 4 latest uncompressed blobs, around 1M per blob
-	bcache, _ = lru.NewARC(5)
-}
-
 // convenient method to return the Article at URL index idx
 func (z *ZimReader) ArticleAtURLIdx(idx uint32) (*Article, error) {
 	o, err := z.OffsetAtURLIdx(idx)

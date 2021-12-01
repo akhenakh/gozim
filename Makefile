@@ -31,11 +31,15 @@ lint: export CGO_ENABLED = 0
 lint:
 	golangci-lint run
 
+gozimhttpd: export CGO_ENABLED = 1
+gozimhttpd: export CGO_CFLAGS = $(shell pkg-config --cflags liblzma)
 gozimhttpd:
-	cd cmd/gozimhttpd && go build $LDFLAGS
+	cd cmd/gozimhttpd && go build ${LDFLAGS}
 
+gozimindex: export CGO_ENABLED = 1
+gozimindex: export CGO_CFLAGS = $(shell pkg-config --cflags liblzma)
 gozimindex:
-	cd cmd/gozimindex && go build $LDFLAGS
+	cd cmd/gozimindex && go build ${LDFLAGS}
 
 clean:
 	rm -f cmd/gozimhttpd/gozimhttpd

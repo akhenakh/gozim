@@ -98,6 +98,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.URL.Path != "/" {
 		http.Redirect(w, r, "/zim"+r.URL.Path, http.StatusMovedPermanently)
+
 		return
 	}
 
@@ -116,12 +117,21 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		"HasMainPage": hasMainPage,
 		"MainURL":     mainURL,
 	}
-	templates["index"].Execute(w, d)
+
+	if err := templates.ExecuteTemplate(w, "index.html", d); err != nil {
+		http.Error(w, err.Error(), 500)
+
+		return
+	}
 }
 
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
 	d := map[string]interface{}{}
-	templates["about"].Execute(w, d)
+	if err := templates.ExecuteTemplate(w, "about.html", d); err != nil {
+		http.Error(w, err.Error(), 500)
+
+		return
+	}
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -142,13 +152,21 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !idx {
-		templates["searchNoIdx"].Execute(w, d)
+		if err := templates.ExecuteTemplate(w, "searchNoIdx.html", d); err != nil {
+			http.Error(w, err.Error(), 500)
+		}
+
 		return
 	}
+
 	if q == "" {
-		templates["search"].Execute(w, d)
+		if err := templates.ExecuteTemplate(w, "search.html", d); err != nil {
+			http.Error(w, err.Error(), 500)
+		}
+
 		return
 	}
+
 	itemCount := 20
 	from := itemCount * pageNumber
 	query := bleve.NewQueryStringQuery(q)
@@ -158,6 +176,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	sr, err := index.Search(search)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+
 		return
 	}
 
@@ -194,20 +213,24 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		d["Hits"] = 0
 	}
 
-	templates["searchResult"].Execute(w, d)
+	if err := templates.ExecuteTemplate(w, "searchResult.html", d); err != nil {
+		http.Error(w, err.Error(), 500)
+
+		return
+	}
 }
 
 // browseHandler is browsing the zim page per page
 func browseHandler(w http.ResponseWriter, r *http.Request) {
 	var page, previousPage, nextPage int
 
-	p := r.URL.Query().Get("page")
-	if p != "" {
+	if p := r.URL.Query().Get("page"); p != "" {
 		page, _ = strconv.Atoi(p)
 	}
 
 	if page*ArticlesPerPage-1 >= int(Z.ArticleCount) {
 		http.NotFound(w, r)
+
 		return
 	}
 
@@ -243,7 +266,12 @@ func browseHandler(w http.ResponseWriter, r *http.Request) {
 		"NextPage":     nextPage,
 		"Articles":     Articles,
 	}
-	templates["browse"].Execute(w, d)
+
+	if err := templates.ExecuteTemplate(w, "browse.html", d); err != nil {
+		http.Error(w, err.Error(), 500)
+
+		return
+	}
 }
 
 func robotHandler(w http.ResponseWriter, r *http.Request) {
