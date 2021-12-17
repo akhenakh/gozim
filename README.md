@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/akhenakh/gozim.svg?branch=master)](https://travis-ci.org/akhenakh/gozim)
+[![Build status](https://github.com/akhenakh/gozim/actions/workflows/build.yml/badge.svg)](https://github.com/akhenakh/gozim/actions/workflows/build.yml)
 
 gozim
 =====
