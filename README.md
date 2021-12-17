@@ -17,40 +17,14 @@ Wikipedia/Wikinews/... ZIMs can be downloaded from there http://download.kiwix.o
 build and installation
 ======================
 
-On Ubuntu/Debian youn need those packages to compile gozim
-```
-apt-get install git liblzma-dev mercurial build-essential
-```
-
-For the indexer bleve to work properly it's recommended that you use leveldb as storage.
-```
-go get -u -v -tags all github.com/blevesearch/bleve/...
-```
-
-Gozim http server is using go.rice to embed html/css in the binary install the rice command
-```
-go get github.com/GeertJohan/go.rice
-go get github.com/GeertJohan/go.rice/rice
-go install github.com/GeertJohan/go.rice
-go install github.com/GeertJohan/go.rice/rice
-```
-
-Get and build the gozim executables
+On Ubuntu/Debian you need those packages to compile gozim
 ```bash
-go get github.com/akhenakh/gozim/...
-cd $GOPATH/src/github.com/akhenakh/gozim
-go build github.com/akhenakh/gozim/cmd/gozimhttpd
-go build github.com/akhenakh/gozim/cmd/gozimindex
+apt install git liblzma-dev mercurial build-essential
 ```
 
-After build gozimhttpd command run to embed the files:
-```
-rice append --exec gozimhttpd
-```
-
-On OSX:
-```
-CGO_CFLAGS=`pkg-config --cflags liblzma` go build 
+Then you can build gozimindex and gozimhttpd with 
+```bash
+make build
 ```
 
 cross-compilation
