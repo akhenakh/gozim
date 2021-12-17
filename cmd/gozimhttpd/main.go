@@ -12,20 +12,18 @@ import (
 	"strconv"
 
 	zim "github.com/akhenakh/gozim"
-	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/v2"
 	lru "github.com/hashicorp/golang-lru"
 
-	_ "github.com/blevesearch/bleve/analysis/lang/ar"
-	_ "github.com/blevesearch/bleve/analysis/lang/cjk"
-	_ "github.com/blevesearch/bleve/analysis/lang/ckb"
-	_ "github.com/blevesearch/bleve/analysis/lang/en"
-	_ "github.com/blevesearch/bleve/analysis/lang/fa"
-	_ "github.com/blevesearch/bleve/analysis/lang/fr"
-	_ "github.com/blevesearch/bleve/analysis/lang/hi"
-	_ "github.com/blevesearch/bleve/analysis/lang/it"
-	_ "github.com/blevesearch/bleve/analysis/lang/pt"
-
-	_ "github.com/blevesearch/bleve/index/store/goleveldb"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/ar"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/cjk"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/ckb"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/en"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/fa"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/fr"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/hi"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/it"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/pt"
 )
 
 type ResponseType int8

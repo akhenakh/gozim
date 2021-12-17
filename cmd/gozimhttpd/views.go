@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	zim "github.com/akhenakh/gozim"
-	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/v2"
 )
 
 const (
