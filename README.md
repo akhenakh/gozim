@@ -1,4 +1,5 @@
 [![Build status](https://github.com/akhenakh/gozim/actions/workflows/build.yml/badge.svg)](https://github.com/akhenakh/gozim/actions/workflows/build.yml)
+[![Lint status](https://github.com/akhenakh/gozim/actions/workflows/lint.yml/badge.svg)](https://github.com/akhenakh/gozim/actions/workflows/lint.yml)
 
 gozim
 =====
