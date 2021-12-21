@@ -8,11 +8,9 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	zim "github.com/akhenakh/gozim"
-	"github.com/blevesearch/bleve"
-	_ "github.com/blevesearch/bleve/analysis/lang/en"
-	_ "github.com/blevesearch/bleve/analysis/lang/fr"
-
-	_ "github.com/blevesearch/bleve/index/store/goleveldb"
+	"github.com/blevesearch/bleve/v2"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/en"
+	_ "github.com/blevesearch/bleve/v2/analysis/lang/fr"
 )
 
 type ArticleIndex struct {

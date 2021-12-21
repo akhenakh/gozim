@@ -14,5 +14,6 @@ _testmain.go
 *.exe
 *.test
 *.zim
+*.idx
 cmd/gozimhttpd/gozimhttpd
 cmd/gozimindex/gozimindex

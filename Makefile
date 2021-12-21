@@ -12,35 +12,45 @@ targets = gozimhttpd gozimindex
 
 all: test $(targets)
 
+build: $(targets)
+
 test: testcgo testnocgo
 
-testcgo: export CGO_ENABLED = 1
-testcgo: export CGO_CFLAGS = $(shell pkg-config --cflags liblzma)
-testcgo:
-	go test 
+testcgo: 
+	export CGO_ENABLED=1
+	export CGO_CFLAGS=$(shell pkg-config --cflags liblzma)
+	go test 	
 
-testnocgo: export CGO_ENABLED = 0
 testnocgo:
+	export CGO_ENABLED=0
 	go test 
 
 testnolint:
 	go test -race ./...
-
-
-lint: export CGO_ENABLED = 0
+ 
 lint:
+	export CGO_ENABLED=0
 	golangci-lint run
 
-gozimhttpd: export CGO_ENABLED = 1
-gozimhttpd: export CGO_CFLAGS = $(shell pkg-config --cflags liblzma)
-gozimhttpd:
-	cd cmd/gozimhttpd && go build ${LDFLAGS}
+gozimhttpd: 
+	go mod download
+	export CGO_ENABLED=1
+	export CGO_CFLAGS=$(shell pkg-config --cflags liblzma)
+	cd cmd/gozimhttpd && go build ${LDFLAGS}	
 
-gozimindex: export CGO_ENABLED = 1
-gozimindex: export CGO_CFLAGS = $(shell pkg-config --cflags liblzma)
-gozimindex:
-	cd cmd/gozimindex && go build ${LDFLAGS}
+gozimindex: 
+	go mod download
+	export CGO_ENABLED=1
+	export CGO_CFLAGS=$(shell pkg-config --cflags liblzma)
+	cd cmd/gozimindex && go build ${LDFLAGS}	
+
+upgrade:
+	go get -u -v
+	go mod download
+	go mod tidy
+	go mod verify
 
 clean:
+	go clean
 	rm -f cmd/gozimhttpd/gozimhttpd
 	rm -f cmd/gozimindex/gozimindex
